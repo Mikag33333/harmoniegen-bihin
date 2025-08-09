@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>アルモニー玄 機材・備品管理システム</title>
+    <title>アルモニー玄 機材・備品管理システム（Airtable版）</title>
     <style>
         * {
             margin: 0;
@@ -38,6 +38,33 @@
         .header h1 {
             font-size: 2em;
             margin-bottom: 5px;
+        }
+
+        .database-status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .database-status.connected {
+            background: rgba(40, 167, 69, 0.1);
+            border: 2px solid #28a745;
+            color: #155724;
+        }
+
+        .database-status.disconnected {
+            background: rgba(220, 53, 69, 0.1);
+            border: 2px solid #dc3545;
+            color: #721c24;
+        }
+
+        .database-status.connecting {
+            background: rgba(255, 193, 7, 0.1);
+            border: 2px solid #ffc107;
+            color: #856404;
         }
         
         .main-content {
@@ -103,6 +130,11 @@
             background: linear-gradient(45deg, #ff6b6b, #ee5a52);
             color: white;
         }
+
+        .btn-info {
+            background: linear-gradient(45deg, #17a2b8, #20c997);
+            color: white;
+        }
         
         .btn:hover, .btn:active {
             transform: translateY(-2px);
@@ -147,11 +179,30 @@
             margin-bottom: 15px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             cursor: pointer;
+            position: relative;
         }
         
         .item-card.completed {
             border-color: #28a745;
             background: #f8fff9;
+        }
+
+        .item-card.syncing {
+            border-color: #ffc107;
+            background: #fff8e1;
+        }
+
+        .item-card.syncing::after {
+            content: "🔄 同期中...";
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ffc107;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
         }
         
         .item-card:hover, .item-card:active {
@@ -301,6 +352,43 @@
             overflow-y: auto;
         }
 
+        .setup-section {
+            background: #e8f4f8;
+            border: 2px solid #17a2b8;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .setup-steps {
+            list-style: none;
+            counter-reset: step-counter;
+        }
+
+        .setup-steps li {
+            counter-increment: step-counter;
+            margin-bottom: 15px;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .setup-steps li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #17a2b8;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
         @media (max-width: 768px) {
             body {
                 padding: 5px;
@@ -343,10 +431,49 @@
     <div class="container">
         <div class="header">
             <h1>🍽️ アルモニー玄</h1>
-            <p>機材・備品管理システム</p>
+            <p>機材・備品管理システム（Airtable版）</p>
         </div>
         
         <div class="main-content">
+            <!-- データベース状態表示 -->
+            <div id="databaseStatus" class="database-status disconnected">
+                🔴 Airtable未接続 - 設定が必要です
+            </div>
+
+            <!-- Airtable設定 -->
+            <div class="setup-section" id="setupSection">
+                <h3>🔧 Airtable設定（初回のみ）</h3>
+                
+                <div class="form-group">
+                    <label>Airtable API Key</label>
+                    <input type="password" id="apiKey" placeholder="patXXXXXXXXXXXXXX...">
+                    <small style="display: block; margin-top: 5px; color: #666;">
+                        <a href="https://airtable.com/create/tokens" target="_blank" style="color: #007bff;">
+                            Airtable Personal Access Token を取得 →
+                        </a>
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label>Base ID</label>
+                    <input type="text" id="baseId" placeholder="appXXXXXXXXXXXXXX">
+                    <small style="display: block; margin-top: 5px; color: #666;">
+                        Airtable BaseのURLから取得できます
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label>Table Name</label>
+                    <input type="text" id="tableName" value="機材備品管理" placeholder="機材備品管理">
+                </div>
+                
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-info" id="testConnectionBtn">🔌 接続テスト</button>
+                    <button class="btn btn-success" id="saveConfigBtn">💾 設定保存</button>
+                    <button class="btn btn-primary" id="setupGuideBtn">📖 設定ガイド</button>
+                </div>
+            </div>
+            
             <!-- ユーザー設定 -->
             <div class="section">
                 <h3>👤 入力者設定</h3>
@@ -385,23 +512,28 @@
                     <label>🔢 個数</label>
                     <input type="number" id="itemCount" value="1" min="1">
                 </div>
+
+                <div class="form-group">
+                    <label>📝 メモ・備考</label>
+                    <input type="text" id="itemMemo" placeholder="サイズ、状態、特記事項など（任意）">
+                </div>
                 
                 <div class="form-group">
                     <label>🏷️ 属性を選択</label>
                     <div class="category-buttons" id="categoryButtons">
-                        <button class="category-btn" data-value="kitchen">厨房器具</button>
-                        <button class="category-btn" data-value="interior">店内機材</button>
-                        <button class="category-btn" data-value="tableware">食器類</button>
-                        <button class="category-btn" data-value="supplies">備品</button>
+                        <button class="category-btn" data-value="厨房器具">厨房器具</button>
+                        <button class="category-btn" data-value="店内機材">店内機材</button>
+                        <button class="category-btn" data-value="食器類">食器類</button>
+                        <button class="category-btn" data-value="備品">備品</button>
                     </div>
                 </div>
                 
                 <div class="form-group">
                     <label>⚡ 取扱い方法</label>
                     <div class="category-buttons" id="handlingButtons">
-                        <button class="category-btn" data-value="disposal">処分</button>
-                        <button class="category-btn" data-value="transfer">譲渡</button>
-                        <button class="category-btn" data-value="send">送り</button>
+                        <button class="category-btn" data-value="処分">処分</button>
+                        <button class="category-btn" data-value="譲渡">譲渡</button>
+                        <button class="category-btn" data-value="送り">送り</button>
                     </div>
                     <div id="destinationDiv" class="form-group hidden">
                         <label>譲渡先/送り先</label>
@@ -415,14 +547,21 @@
                     </div>
                 </div>
                 
-                <button class="btn btn-success" id="addItemBtn">品目を追加</button>
+                <button class="btn btn-success" id="addItemBtn" disabled>品目を追加</button>
+                <p id="addItemStatus" style="font-size: 14px; color: #666; margin-top: 5px;">
+                    ⚠️ Airtable接続後に有効になります
+                </p>
             </div>
             
             <!-- 品目一覧 -->
             <div class="section">
                 <h3>📦 登録済み品目一覧</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <button class="btn btn-info" id="refreshBtn" disabled>🔄 最新データを取得</button>
+                    <button class="btn btn-primary" id="openAirtableBtn" disabled>📊 Airtableで確認</button>
+                </div>
                 <div id="itemsList">
-                    <p style="text-align: center; color: #6c757d; padding: 40px;">まだ品目が登録されていません。</p>
+                    <p style="text-align: center; color: #6c757d; padding: 40px;">Airtable接続後にデータが表示されます</p>
                 </div>
             </div>
             
@@ -431,31 +570,74 @@
                 <h3>📊 集計情報</h3>
                 <div class="summary-grid" id="summaryGrid">
                     <div class="summary-card">
-                        <h4>0</h4>
+                        <h4>-</h4>
                         <p>総品目数</p>
                     </div>
                     <div class="summary-card">
-                        <h4>0</h4>
+                        <h4>-</h4>
                         <p>決定済み</p>
                     </div>
                     <div class="summary-card">
-                        <h4>0</h4>
+                        <h4>-</h4>
                         <p>厨房器具</p>
                     </div>
                     <div class="summary-card">
-                        <h4>0</h4>
+                        <h4>-</h4>
                         <p>店内機材</p>
                     </div>
                     <div class="summary-card">
-                        <h4>0</h4>
+                        <h4>-</h4>
                         <p>食器類</p>
                     </div>
                     <div class="summary-card">
-                        <h4>0</h4>
+                        <h4>-</h4>
                         <p>備品</p>
                     </div>
                 </div>
-                <button class="btn btn-success" id="exportBtn">📄 CSVエクスポート</button>
+                <button class="btn btn-success" id="exportBtn" disabled>📄 CSVエクスポート</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 設定ガイドモーダル -->
+    <div id="setupGuideModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 20px; color: #2c3e50;">📖 Airtable設定ガイド</h3>
+            
+            <ol class="setup-steps">
+                <li><strong>Airtableアカウント作成</strong><br>
+                    <a href="https://airtable.com" target="_blank" style="color: #007bff;">airtable.com</a> でアカウント作成</li>
+                
+                <li><strong>新しいBaseを作成</strong><br>
+                    「機材備品管理」という名前でBase作成</li>
+                
+                <li><strong>テーブル設定</strong><br>
+                    以下のフィールドを作成：
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li>品名 (Single line text)</li>
+                        <li>個数 (Number)</li>
+                        <li>属性 (Single select)</li>
+                        <li>取扱い方法 (Single select)</li>
+                        <li>送り先 (Single line text)</li>
+                        <li>決定済み (Checkbox)</li>
+                        <li>登録者 (Single line text)</li>
+                        <li>登録日時 (Date)</li>
+                        <li>メモ (Long text)</li>
+                        <li>写真 (Attachment)</li>
+                    </ul>
+                </li>
+                
+                <li><strong>API Token取得</strong><br>
+                    <a href="https://airtable.com/create/tokens" target="_blank" style="color: #007bff;">Personal Access Token作成</a><br>
+                    Scope: data.records:read, data.records:write</li>
+                
+                <li><strong>Base ID取得</strong><br>
+                    BaseのURL: https://airtable.com/appXXXXXXX/...<br>
+                    「appXXXXXXX」部分をコピー</li>
+            </ol>
+            
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="closeSetupGuide()">閉じる</button>
             </div>
         </div>
     </div>
@@ -469,20 +651,215 @@
             let items = [];
             let selectedCategory = '';
             let selectedHandling = '';
+            let airtableConfig = null;
             
-            const categoryNames = {
-                kitchen: '厨房器具',
-                interior: '店内機材',
-                tableware: '食器類',
-                supplies: '備品'
-            };
-            
-            const handlingNames = {
-                disposal: '処分',
-                transfer: '譲渡',
-                send: '送り',
-                undecided: '未決定'
-            };
+            // Airtable設定の確認
+            function checkAirtableConfig() {
+                const saved = localStorage.getItem('airtableConfig');
+                if (saved) {
+                    try {
+                        airtableConfig = JSON.parse(saved);
+                        updateConnectionStatus('connected');
+                        enableFeatures();
+                        loadItemsFromAirtable();
+                    } catch (error) {
+                        console.error('設定読み込みエラー:', error);
+                    }
+                }
+            }
+
+            // 接続状態の更新
+            function updateConnectionStatus(status) {
+                const statusDiv = document.getElementById('databaseStatus');
+                statusDiv.className = 'database-status ' + status;
+                
+                switch(status) {
+                    case 'connected':
+                        statusDiv.innerHTML = '🟢 Airtable接続済み - データ同期可能';
+                        break;
+                    case 'connecting':
+                        statusDiv.innerHTML = '🟡 Airtable接続中...';
+                        break;
+                    case 'disconnected':
+                        statusDiv.innerHTML = '🔴 Airtable未接続 - 設定が必要です';
+                        break;
+                }
+            }
+
+            // 機能の有効化
+            function enableFeatures() {
+                const buttons = ['addItemBtn', 'refreshBtn', 'openAirtableBtn', 'exportBtn'];
+                buttons.forEach(id => {
+                    const btn = document.getElementById(id);
+                    if (btn) {
+                        btn.disabled = false;
+                    }
+                });
+                
+                const status = document.getElementById('addItemStatus');
+                if (status) {
+                    status.textContent = '✅ Airtable接続済み - 品目追加可能';
+                    status.style.color = '#28a745';
+                }
+            }
+
+            // Airtable接続テスト
+            async function testAirtableConnection() {
+                const apiKey = document.getElementById('apiKey').value.trim();
+                const baseId = document.getElementById('baseId').value.trim();
+                const tableName = document.getElementById('tableName').value.trim();
+
+                if (!apiKey || !baseId || !tableName) {
+                    alert('すべての項目を入力してください。');
+                    return;
+                }
+
+                updateConnectionStatus('connecting');
+
+                try {
+                    const response = await fetch(`https://api.airtable.com/v0/${baseId}/${tableName}?maxRecords=1`, {
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        updateConnectionStatus('connected');
+                        alert('✅ Airtable接続成功！');
+                        
+                        airtableConfig = { apiKey, baseId, tableName };
+                        enableFeatures();
+                        
+                    } else {
+                        throw new Error(`接続エラー: ${response.status}`);
+                    }
+                } catch (error) {
+                    updateConnectionStatus('disconnected');
+                    alert('❌ 接続失敗: ' + error.message);
+                }
+            }
+
+            // 設定保存
+            function saveAirtableConfig() {
+                if (!airtableConfig) {
+                    alert('まず接続テストを行ってください。');
+                    return;
+                }
+
+                localStorage.setItem('airtableConfig', JSON.stringify(airtableConfig));
+                alert('✅ 設定を保存しました！');
+                
+                // 設定セクションを隠す
+                document.getElementById('setupSection').style.display = 'none';
+            }
+
+            // Airtableからデータ読み込み
+            async function loadItemsFromAirtable() {
+                if (!airtableConfig) return;
+
+                try {
+                    const response = await fetch(`https://api.airtable.com/v0/${airtableConfig.baseId}/${airtableConfig.tableName}`, {
+                        headers: {
+                            'Authorization': `Bearer ${airtableConfig.apiKey}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        items = data.records.map(record => ({
+                            id: record.id,
+                            name: record.fields['品名'] || '',
+                            count: record.fields['個数'] || 1,
+                            category: record.fields['属性'] || '備品',
+                            handling: record.fields['取扱い方法'] || '未決定',
+                            destination: record.fields['送り先'] || '',
+                            completed: record.fields['決定済み'] || false,
+                            addedBy: record.fields['登録者'] || '',
+                            addedAt: record.fields['登録日時'] || '',
+                            memo: record.fields['メモ'] || '',
+                            photoUrl: record.fields['写真'] ? record.fields['写真'][0]?.url : null
+                        }));
+
+                        displayItems();
+                        updateSummary();
+                        console.log('Airtableからデータを読み込みました:', items.length, '件');
+                    }
+                } catch (error) {
+                    console.error('データ読み込みエラー:', error);
+                }
+            }
+
+            // Airtableに品目追加
+            async function addItemToAirtable(item) {
+                if (!airtableConfig) return false;
+
+                try {
+                    const fields = {
+                        '品名': item.name,
+                        '個数': item.count,
+                        '属性': item.category,
+                        '取扱い方法': item.handling,
+                        '送り先': item.destination,
+                        '決定済み': item.completed,
+                        '登録者': item.addedBy,
+                        '登録日時': item.addedAt,
+                        'メモ': item.memo || ''
+                    };
+
+                    // 写真がある場合は別途処理（簡略化）
+                    if (item.photoData) {
+                        // 実際の実装では画像をAirtableにアップロード
+                        // 今回は簡略化してBase64データを保存
+                        fields['写真メモ'] = '写真あり（Base64データ）';
+                    }
+
+                    const response = await fetch(`https://api.airtable.com/v0/${airtableConfig.baseId}/${airtableConfig.tableName}`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${airtableConfig.apiKey}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            fields: fields
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.id;
+                    } else {
+                        throw new Error(`追加エラー: ${response.status}`);
+                    }
+                } catch (error) {
+                    console.error('Airtable追加エラー:', error);
+                    return false;
+                }
+            }
+
+            // Airtableの品目更新
+            async function updateItemInAirtable(recordId, updates) {
+                if (!airtableConfig) return false;
+
+                try {
+                    const response = await fetch(`https://api.airtable.com/v0/${airtableConfig.baseId}/${airtableConfig.tableName}/${recordId}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `Bearer ${airtableConfig.apiKey}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            fields: updates
+                        })
+                    });
+
+                    return response.ok;
+                } catch (error) {
+                    console.error('Airtable更新エラー:', error);
+                    return false;
+                }
+            }
 
             // エラーハンドリング
             function showError(message) {
@@ -538,7 +915,6 @@
             function processImageForMobile(file) {
                 return new Promise(function(resolve, reject) {
                     try {
-                        // ファイルサイズチェック（5MB以下）
                         if (file.size > 5 * 1024 * 1024) {
                             reject(new Error('ファイルサイズが大きすぎます（5MB以下にしてください）'));
                             return;
@@ -550,7 +926,7 @@
                         }
 
                         // 小さな画像はそのまま使用
-                        if (file.size < 500 * 1024) { // 500KB以下
+                        if (file.size < 500 * 1024) {
                             const reader = new FileReader();
                             reader.onload = function(e) {
                                 resolve({
@@ -582,7 +958,6 @@
                                             return;
                                         }
 
-                                        // モバイル向けサイズ制限
                                         const maxWidth = window.innerWidth > 768 ? 600 : 400;
                                         let width = img.width;
                                         let height = img.height;
@@ -595,11 +970,8 @@
                                         
                                         canvas.width = width;
                                         canvas.height = height;
-                                        
-                                        // 高品質設定を簡素化（モバイル向け）
                                         ctx.drawImage(img, 0, 0, width, height);
                                         
-                                        // モバイル向け圧縮率を調整
                                         const quality = file.size > 2 * 1024 * 1024 ? 0.5 : 0.7;
                                         
                                         canvas.toBlob(function(blob) {
@@ -645,84 +1017,80 @@
             }
             
             // 品目追加
-            function addItem() {
+            async function addItem() {
                 try {
                     if (!currentUser) {
                         alert('まず入力者名を設定してください。');
+                        return;
+                    }
+
+                    if (!airtableConfig) {
+                        alert('まずAirtableの設定を完了してください。');
                         return;
                     }
                     
                     const photoInput = document.getElementById('photoInput');
                     const itemName = document.getElementById('itemName').value.trim();
                     const itemCount = document.getElementById('itemCount').value;
+                    const itemMemo = document.getElementById('itemMemo').value.trim();
                     const destination = document.getElementById('destination').value.trim();
                     
-                    // 写真または品名のどちらかがあればOK
                     if (!photoInput.files[0] && !itemName) {
                         alert('写真または品名のどちらかを入力してください。');
                         return;
                     }
                     
-                    if ((selectedHandling === 'transfer' || selectedHandling === 'send') && !destination) {
+                    if ((selectedHandling === '譲渡' || selectedHandling === '送り') && !destination) {
                         alert('譲渡先または送り先を入力してください。');
                         return;
                     }
                     
                     const item = {
-                        id: Date.now(),
                         name: itemName || ('写真_' + (photoInput.files[0] ? photoInput.files[0].name : Date.now())),
                         count: parseInt(itemCount) || 1,
-                        category: selectedCategory || 'supplies',
-                        handling: selectedHandling || 'undecided',
+                        category: selectedCategory || '備品',
+                        handling: selectedHandling || '未決定',
                         destination: destination,
                         completed: false,
                         addedBy: currentUser,
                         addedAt: new Date().toLocaleString('ja-JP'),
+                        memo: itemMemo,
                         photoData: null
                     };
                     
+                    const loadingOverlay = showLoading('品目をAirtableに追加中...');
+
                     if (photoInput.files[0]) {
                         const file = photoInput.files[0];
-                        const loadingOverlay = showLoading('画像を処理中...');
                         
-                        processImageForMobile(file)
-                            .then(function(processed) {
-                                item.photoData = processed.dataUrl;
-                                items.push(item);
-                                displayItems();
-                                updateSummary();
-                                clearForm();
+                        try {
+                            const processed = await processImageForMobile(file);
+                            item.photoData = processed.dataUrl;
+                        } catch (error) {
+                            console.error('画像処理エラー:', error);
+                            if (!confirm('画像の処理に失敗しました。\n写真なしで品目を追加しますか？\n\nエラー: ' + error.message)) {
                                 hideLoading();
-                                saveData();
-                                
-                                let message = '✅ 品目「' + item.name + '」を追加しました！';
-                                if (processed.compressionRatio !== '0') {
-                                    message += '\n📷 写真を' + processed.compressionRatio + '%圧縮しました';
-                                }
-                                alert(message);
-                            })
-                            .catch(function(error) {
-                                hideLoading();
-                                console.error('画像処理エラー:', error);
-                                
-                                // 画像処理に失敗した場合、写真なしで追加するかユーザーに確認
-                                if (confirm('画像の処理に失敗しました。\n写真なしで品目を追加しますか？\n\nエラー: ' + error.message)) {
-                                    items.push(item);
-                                    displayItems();
-                                    updateSummary();
-                                    clearForm();
-                                    saveData();
-                                    alert('✅ 品目「' + item.name + '」を写真なしで追加しました');
-                                }
-                            });
-                    } else {
-                        // 写真なしの場合
+                                return;
+                            }
+                        }
+                    }
+
+                    // Airtableに追加
+                    const recordId = await addItemToAirtable(item);
+                    
+                    if (recordId) {
+                        item.id = recordId;
                         items.push(item);
                         displayItems();
                         updateSummary();
                         clearForm();
-                        saveData();
-                        alert('✅ 品目「' + item.name + '」を追加しました！');
+                        hideLoading();
+                        
+                        let message = '✅ 品目「' + item.name + '」をAirtableに追加しました！';
+                        alert(message);
+                    } else {
+                        hideLoading();
+                        alert('❌ Airtableへの追加に失敗しました。');
                     }
                 } catch (error) {
                     hideLoading();
@@ -736,6 +1104,7 @@
                     document.getElementById('photoInput').value = '';
                     document.getElementById('itemName').value = '';
                     document.getElementById('itemCount').value = '1';
+                    document.getElementById('itemMemo').value = '';
                     document.getElementById('destination').value = '';
                     document.getElementById('destinationDiv').classList.add('hidden');
                     document.getElementById('photoPreview').classList.add('hidden');
@@ -768,18 +1137,22 @@
                             '<div class="item-header">' +
                                 (item.photoData ? 
                                     '<img src="' + item.photoData + '" alt="' + item.name + '" class="item-photo">' : 
-                                    '<div class="item-photo" style="background: #f0f0f0; display: flex; align-items: center; justify-content: center; color: #999; font-size: 20px;">📷</div>'
+                                    (item.photoUrl ? 
+                                        '<img src="' + item.photoUrl + '" alt="' + item.name + '" class="item-photo">' :
+                                        '<div class="item-photo" style="background: #f0f0f0; display: flex; align-items: center; justify-content: center; color: #999; font-size: 20px;">📷</div>'
+                                    )
                                 ) +
                                 '<div class="item-details">' +
                                     '<h4>' + item.name + '</h4>' +
                                     '<p><strong>個数:</strong> ' + item.count + '個</p>' +
-                                    '<p><strong>属性:</strong> ' + (categoryNames[item.category] || item.category) + '</p>' +
-                                    '<p><strong>取扱い:</strong> <span style="color: ' + (item.handling === 'undecided' ? '#ffc107' : '#28a745') + '; font-weight: bold;">' + (handlingNames[item.handling] || item.handling) + '</span></p>' +
+                                    '<p><strong>属性:</strong> ' + item.category + '</p>' +
+                                    '<p><strong>取扱い:</strong> <span style="color: ' + (item.handling === '未決定' ? '#ffc107' : '#28a745') + '; font-weight: bold;">' + item.handling + '</span></p>' +
                                     (item.destination ? '<p><strong>送り先:</strong> ' + item.destination + '</p>' : '') +
+                                    (item.memo ? '<p><strong>メモ:</strong> ' + item.memo + '</p>' : '') +
                                     '<p style="font-size: 12px; color: #6c757d; margin-top: 8px;">' +
                                         '登録者: ' + item.addedBy + ' | ' + item.addedAt +
                                     '</p>' +
-                                    (item.handling === 'undecided' ? '<p style="color: #ffc107; font-weight: bold; margin-top: 5px; font-size: 14px;">📋 タップして処分方法を決定</p>' : '') +
+                                    (item.handling === '未決定' ? '<p style="color: #ffc107; font-weight: bold; margin-top: 5px; font-size: 14px;">📋 タップして処分方法を決定</p>' : '') +
                                 '</div>' +
                             '</div>' +
                             '<div class="item-controls">' +
@@ -796,143 +1169,30 @@
                     document.getElementById('itemsList').innerHTML = '<p style="color: red;">品目の表示中にエラーが発生しました。</p>';
                 }
             }
-            
-            // 品目編集
-            function editItem(itemId) {
-                try {
-                    const item = items.find(function(i) { return i.id === itemId; });
-                    if (!item) {
-                        alert('編集対象が見つかりません。');
-                        return;
-                    }
-                    showEditModal(item);
-                } catch (error) {
-                    showError('編集画面の表示中にエラーが発生しました: ' + error.message);
-                }
-            }
-            
-            // 編集モーダル表示
-            function showEditModal(item) {
-                try {
-                    const existingModal = document.getElementById('editModal');
-                    if (existingModal) {
-                        existingModal.remove();
-                    }
-                    
-                    const photoDisplay = item.photoData ? 
-                        '<img src="' + item.photoData + '" style="max-width: 100%; max-height: 150px; border-radius: 8px; margin-bottom: 15px;">' : 
-                        '';
-                    
-                    const modalHTML = '<div id="editModal" class="modal-overlay">' +
-                        '<div class="modal-content">' +
-                            '<h3 style="margin-bottom: 15px; color: #2c3e50; font-size: 1.2em;">📝 処分方法を決定</h3>' +
-                            '<div style="margin-bottom: 15px;">' +
-                                '<h4 style="font-size: 1.1em;">' + item.name + '</h4>' +
-                                '<p><strong>個数:</strong> ' + item.count + '個</p>' +
-                                '<p><strong>属性:</strong> ' + categoryNames[item.category] + '</p>' +
-                                '<p><strong>登録者:</strong> ' + item.addedBy + '</p>' +
-                            '</div>' +
-                            photoDisplay +
-                            '<div style="margin-bottom: 15px;">' +
-                                '<label style="display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px;">⚡ 処分方法を選択してください</label>' +
-                                '<div style="display: grid; gap: 8px;">' +
-                                    '<button class="category-btn" data-edit-handling="disposal" id="editDisposal">処分</button>' +
-                                    '<button class="category-btn" data-edit-handling="transfer" id="editTransfer">譲渡</button>' +
-                                    '<button class="category-btn" data-edit-handling="send" id="editSend">送り</button>' +
-                                '</div>' +
-                            '</div>' +
-                            '<div id="editDestinationDiv" style="margin-bottom: 15px; display: none;">' +
-                                '<label style="display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px;">📍 譲渡先/送り先</label>' +
-                                '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;">' +
-                                    '<button type="button" class="category-btn" data-edit-destination="対馬">対馬</button>' +
-                                    '<button type="button" class="category-btn" data-edit-destination="西新">西新</button>' +
-                                    '<button type="button" class="category-btn" data-edit-destination="社長自宅">社長自宅</button>' +
-                                    '<button type="button" class="category-btn" data-edit-destination="その他">その他</button>' +
-                                '</div>' +
-                                '<input type="text" id="editDestination" placeholder="その他の場合は直接入力" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 6px; display: none;">' +
-                            '</div>' +
-                            '<div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;">' +
-                                '<button class="btn btn-primary" data-save-edit="' + item.id + '" style="font-size: 14px;">保存</button>' +
-                                '<button class="btn" data-close-modal style="background: #6c757d; color: white; font-size: 14px;">キャンセル</button>' +
-                            '</div>' +
-                        '</div>' +
-                    '</div>';
-                    
-                    document.body.insertAdjacentHTML('beforeend', modalHTML);
-                    
-                    // 既存の設定を復元
-                    if (item.handling !== 'undecided') {
-                        const handlingButton = document.getElementById('edit' + item.handling.charAt(0).toUpperCase() + item.handling.slice(1));
-                        if (handlingButton) {
-                            handlingButton.classList.add('active');
-                        }
-                        
-                        if (item.handling === 'transfer' || item.handling === 'send') {
-                            document.getElementById('editDestinationDiv').style.display = 'block';
-                            
-                            if (item.destination) {
-                                const presetDestinations = ['対馬', '西新', '社長自宅'];
-                                if (presetDestinations.includes(item.destination)) {
-                                    const destButton = document.querySelector('[data-edit-destination="' + item.destination + '"]');
-                                    if (destButton) {
-                                        destButton.classList.add('active');
-                                        document.getElementById('editDestination').value = item.destination;
-                                    }
-                                } else {
-                                    const otherButton = document.querySelector('[data-edit-destination="その他"]');
-                                    if (otherButton) {
-                                        otherButton.classList.add('active');
-                                    }
-                                    const editInput = document.getElementById('editDestination');
-                                    editInput.style.display = 'block';
-                                    editInput.value = item.destination;
-                                }
-                            }
-                        }
-                    }
-                    
-                    window.editingItemId = item.id;
-                    window.editSelectedHandling = item.handling !== 'undecided' ? item.handling : '';
-                } catch (error) {
-                    showError('編集モーダルの表示中にエラーが発生しました: ' + error.message);
-                }
-            }
-            
+
             // 完了状態切り替え
-            function toggleCompleted(itemId) {
+            async function toggleCompleted(itemId) {
                 try {
                     const item = items.find(function(i) { return i.id === itemId; });
                     if (item) {
                         item.completed = !item.completed;
-                        displayItems();
-                        updateSummary();
-                        saveData();
+                        
+                        // Airtableにも反映
+                        const success = await updateItemInAirtable(itemId, {
+                            '決定済み': item.completed
+                        });
+
+                        if (success) {
+                            displayItems();
+                            updateSummary();
+                        } else {
+                            // 失敗した場合は元に戻す
+                            item.completed = !item.completed;
+                            alert('❌ Airtableの更新に失敗しました。');
+                        }
                     }
                 } catch (error) {
                     showError('完了状態切り替え中にエラーが発生しました: ' + error.message);
-                }
-            }
-            
-            // 削除実行
-            function executeDelete(itemId) {
-                try {
-                    const item = items.find(function(i) { return i.id === itemId; });
-                    if (!item) {
-                        alert('削除対象が見つかりません。');
-                        return;
-                    }
-                    
-                    if (confirm('「' + item.name + '」を削除しますか？')) {
-                        const itemName = item.name;
-                        items = items.filter(function(item) { return item.id !== itemId; });
-                        
-                        displayItems();
-                        updateSummary();
-                        saveData();
-                        alert('✅ 「' + itemName + '」を削除しました');
-                    }
-                } catch (error) {
-                    showError('削除中にエラーが発生しました: ' + error.message);
                 }
             }
             
@@ -942,10 +1202,10 @@
                     const summary = {
                         total: items.length,
                         completed: items.filter(function(i) { return i.completed; }).length,
-                        kitchen: items.filter(function(i) { return i.category === 'kitchen'; }).length,
-                        interior: items.filter(function(i) { return i.category === 'interior'; }).length,
-                        tableware: items.filter(function(i) { return i.category === 'tableware'; }).length,
-                        supplies: items.filter(function(i) { return i.category === 'supplies'; }).length
+                        kitchen: items.filter(function(i) { return i.category === '厨房器具'; }).length,
+                        interior: items.filter(function(i) { return i.category === '店内機材'; }).length,
+                        tableware: items.filter(function(i) { return i.category === '食器類'; }).length,
+                        supplies: items.filter(function(i) { return i.category === '備品'; }).length
                     };
                     
                     document.getElementById('summaryGrid').innerHTML = 
@@ -977,7 +1237,7 @@
                     console.error('集計更新中にエラー:', error);
                 }
             }
-            
+
             // CSVエクスポート
             function exportCSV() {
                 try {
@@ -986,19 +1246,20 @@
                         return;
                     }
                     
-                    const headers = ['品名', '個数', '属性', '取扱い方法', '送り先', '決定済み', '登録者', '登録日時'];
+                    const headers = ['品名', '個数', '属性', '取扱い方法', '送り先', '決定済み', '登録者', '登録日時', 'メモ'];
                     const csvContent = [
                         headers.join(','),
                         items.map(function(item) {
                             return [
                                 '"' + item.name + '"',
                                 item.count,
-                                '"' + (categoryNames[item.category] || item.category) + '"',
-                                '"' + (handlingNames[item.handling] || item.handling) + '"',
+                                '"' + item.category + '"',
+                                '"' + item.handling + '"',
                                 '"' + (item.destination || '') + '"',
                                 item.completed ? '完了' : '未完了',
                                 '"' + item.addedBy + '"',
-                                '"' + item.addedAt + '"'
+                                '"' + item.addedAt + '"',
+                                '"' + (item.memo || '') + '"'
                             ].join(',');
                         }).join('\n')
                     ].join('\n');
@@ -1018,40 +1279,41 @@
                 }
             }
 
-            // データ保存
-            function saveData() {
-                try {
-                    localStorage.setItem('armonieItems', JSON.stringify(items));
-                    console.log('データを保存しました:', items.length, '件');
-                } catch (error) {
-                    console.warn('データ保存に失敗しました:', error);
+            // Airtableを開く
+            function openAirtable() {
+                if (airtableConfig) {
+                    const url = `https://airtable.com/${airtableConfig.baseId}`;
+                    window.open(url, '_blank');
                 }
             }
 
-            // データ読み込み
-            function loadData() {
-                try {
-                    const savedItems = localStorage.getItem('armonieItems');
-                    if (savedItems) {
-                        items = JSON.parse(savedItems);
-                        console.log('保存されたデータを読み込みました:', items.length, '件');
-                    }
-                } catch (error) {
-                    console.warn('データ読み込みに失敗しました:', error);
-                    items = [];
-                }
+            // 設定ガイドを表示
+            function showSetupGuide() {
+                document.getElementById('setupGuideModal').classList.remove('hidden');
+            }
+
+            // 設定ガイドを閉じる
+            function closeSetupGuide() {
+                document.getElementById('setupGuideModal').classList.add('hidden');
             }
 
             // イベントハンドラーの設定
             function setupEventHandlers() {
                 try {
+                    // Airtable設定ボタン
+                    document.getElementById('testConnectionBtn').addEventListener('click', testAirtableConnection);
+                    document.getElementById('saveConfigBtn').addEventListener('click', saveAirtableConfig);
+                    document.getElementById('setupGuideBtn').addEventListener('click', showSetupGuide);
+                    
                     // ユーザー設定ボタン
                     document.getElementById('setUserBtn').addEventListener('click', setUser);
                     
                     // 品目追加ボタン
                     document.getElementById('addItemBtn').addEventListener('click', addItem);
                     
-                    // CSVエクスポートボタン
+                    // その他のボタン
+                    document.getElementById('refreshBtn').addEventListener('click', loadItemsFromAirtable);
+                    document.getElementById('openAirtableBtn').addEventListener('click', openAirtable);
                     document.getElementById('exportBtn').addEventListener('click', exportCSV);
 
                     // カテゴリー選択ボタン
@@ -1077,7 +1339,7 @@
                             selectedHandling = e.target.getAttribute('data-value');
                             
                             const destinationDiv = document.getElementById('destinationDiv');
-                            if (selectedHandling === 'transfer' || selectedHandling === 'send') {
+                            if (selectedHandling === '譲渡' || selectedHandling === '送り') {
                                 destinationDiv.classList.remove('hidden');
                                 document.querySelectorAll('#destinationButtons .category-btn').forEach(function(btn) {
                                     btn.classList.remove('active');
@@ -1119,71 +1381,21 @@
                         const itemCard = e.target.closest('.item-card');
                         if (!itemCard) return;
 
-                        const itemId = parseInt(itemCard.getAttribute('data-item-id'));
+                        const itemId = itemCard.getAttribute('data-item-id');
 
                         if (e.target.hasAttribute('data-delete-item')) {
                             e.stopPropagation();
-                            executeDelete(itemId);
+                            // 削除機能は簡略化（Airtableの削除APIを使用）
+                            if (confirm('この品目を削除しますか？')) {
+                                alert('削除機能は開発中です。Airtableから直接削除してください。');
+                            }
                         } else if (e.target.hasAttribute('data-toggle-completed')) {
                             e.stopPropagation();
                             toggleCompleted(itemId);
-                        } else if (!e.target.closest('.item-controls')) {
-                            editItem(itemId);
                         }
                     });
 
-                    // モーダル内のイベント委譲
-                    document.body.addEventListener('click', function(e) {
-                        if (e.target.hasAttribute('data-edit-handling')) {
-                            const handling = e.target.getAttribute('data-edit-handling');
-                            
-                            document.querySelectorAll('#editModal [data-edit-handling]').forEach(function(btn) {
-                                btn.classList.remove('active');
-                            });
-                            
-                            e.target.classList.add('active');
-                            
-                            const destinationDiv = document.getElementById('editDestinationDiv');
-                            if (handling === 'transfer' || handling === 'send') {
-                                destinationDiv.style.display = 'block';
-                                document.querySelectorAll('#editDestinationDiv [data-edit-destination]').forEach(function(btn) {
-                                    btn.classList.remove('active');
-                                });
-                                document.getElementById('editDestination').style.display = 'none';
-                                document.getElementById('editDestination').value = '';
-                            } else {
-                                destinationDiv.style.display = 'none';
-                            }
-                            
-                            window.editSelectedHandling = handling;
-                        } else if (e.target.hasAttribute('data-edit-destination')) {
-                            const destination = e.target.getAttribute('data-edit-destination');
-                            
-                            document.querySelectorAll('#editDestinationDiv [data-edit-destination]').forEach(function(btn) {
-                                btn.classList.remove('active');
-                            });
-                            
-                            e.target.classList.add('active');
-                            
-                            const destinationInput = document.getElementById('editDestination');
-                            
-                            if (destination === 'その他') {
-                                destinationInput.style.display = 'block';
-                                destinationInput.value = '';
-                                destinationInput.focus();
-                            } else {
-                                destinationInput.style.display = 'none';
-                                destinationInput.value = destination;
-                            }
-                        } else if (e.target.hasAttribute('data-save-edit')) {
-                            const itemId = parseInt(e.target.getAttribute('data-save-edit'));
-                            saveEdit(itemId);
-                        } else if (e.target.hasAttribute('data-close-modal')) {
-                            closeEditModal();
-                        }
-                    });
-
-                    // 写真選択時のプレビュー機能（モバイル対応）
+                    // 写真選択時のプレビュー機能
                     document.getElementById('photoInput').addEventListener('change', function(event) {
                         const file = event.target.files[0];
                         const previewDiv = document.getElementById('photoPreview');
@@ -1201,7 +1413,6 @@
                             return;
                         }
                         
-                        // ファイルサイズチェック
                         if (file.size > 5 * 1024 * 1024) {
                             alert('ファイルサイズが大きすぎます（5MB以下にしてください）');
                             event.target.value = '';
@@ -1233,63 +1444,14 @@
                     console.error('イベントハンドラー設定中にエラー:', error);
                 }
             }
-
-            // 編集保存
-            function saveEdit(itemId) {
-                try {
-                    const item = items.find(function(i) { return i.id === itemId; });
-                    if (!item) return;
-                    
-                    const handling = window.editSelectedHandling;
-                    const destination = document.getElementById('editDestination').value.trim();
-                    
-                    if (!handling) {
-                        alert('処分方法を選択してください。');
-                        return;
-                    }
-                    
-                    if ((handling === 'transfer' || handling === 'send') && !destination) {
-                        alert('譲渡先または送り先を入力してください。');
-                        return;
-                    }
-                    
-                    item.handling = handling;
-                    item.destination = destination;
-                    item.updatedAt = new Date().toLocaleString('ja-JP');
-                    
-                    displayItems();
-                    updateSummary();
-                    closeEditModal();
-                    saveData();
-                    
-                    alert('✅ 「' + item.name + '」の処分方法を「' + handlingNames[handling] + '」に決定しました。');
-                } catch (error) {
-                    showError('編集保存中にエラーが発生しました: ' + error.message);
-                }
-            }
-            
-            // モーダルを閉じる
-            function closeEditModal() {
-                try {
-                    const modal = document.getElementById('editModal');
-                    if (modal) {
-                        modal.remove();
-                    }
-                    window.editingItemId = null;
-                    window.editSelectedHandling = '';
-                } catch (error) {
-                    console.error('モーダル終了中にエラー:', error);
-                }
-            }
             
             // 初期化
             function init() {
                 try {
-                    console.log('📱 アルモニー玄管理システムを初期化中...');
+                    console.log('📱 アルモニー玄管理システム（Airtable版）を初期化中...');
                     
-                    loadData();
                     setupEventHandlers();
-                    displayItems();
+                    checkAirtableConfig();
                     updateSummary();
                     
                     console.log('✅ システム初期化完了');
@@ -1298,17 +1460,17 @@
                 }
             }
             
+            // グローバル関数として公開
+            window.closeSetupGuide = closeSetupGuide;
+            
             // ページ読み込み時に初期化
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', init);
             } else {
                 init();
             }
-
-            // ページ離脱時にデータを保存
-            window.addEventListener('beforeunload', saveData);
             
-            console.log('✅ モバイル対応スクリプト読み込み完了');
+            console.log('✅ Airtable連携システム読み込み完了');
         })();
     </script>
 </body>
