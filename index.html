@@ -15,7 +15,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 10px;
             overflow-x: hidden;
         }
         
@@ -26,42 +26,40 @@
             border-radius: 15px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             overflow: hidden;
-            position: relative;
-            z-index: 10;
         }
         
         .header {
             background: linear-gradient(45deg, #2c3e50, #34495e);
             color: white;
-            padding: 30px;
+            padding: 20px;
             text-align: center;
         }
         
         .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            font-size: 2em;
+            margin-bottom: 5px;
         }
         
         .main-content {
-            padding: 30px;
+            padding: 20px;
         }
         
         .section {
             background: #f8f9fa;
-            padding: 25px;
+            padding: 20px;
             border-radius: 12px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             border: 2px solid #e9ecef;
         }
         
         .section h3 {
             color: #2c3e50;
-            margin-bottom: 20px;
-            font-size: 1.5em;
+            margin-bottom: 15px;
+            font-size: 1.3em;
         }
         
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         
         .form-group label {
@@ -88,6 +86,7 @@
             font-weight: 600;
             margin: 5px;
             transition: all 0.3s ease;
+            touch-action: manipulation;
         }
         
         .btn-primary {
@@ -105,20 +104,20 @@
             color: white;
         }
         
-        .btn:hover {
+        .btn:hover, .btn:active {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         
         .category-buttons {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
             margin: 10px 0;
         }
         
         .category-btn {
-            padding: 12px;
+            padding: 12px 8px;
             border: 2px solid #ddd;
             background: white;
             border-radius: 8px;
@@ -126,9 +125,11 @@
             text-align: center;
             font-weight: 600;
             transition: all 0.3s ease;
+            touch-action: manipulation;
+            font-size: 14px;
         }
         
-        .category-btn:hover {
+        .category-btn:hover, .category-btn:active {
             background: #f8f9fa;
         }
         
@@ -142,8 +143,8 @@
             background: white;
             border: 2px solid #e9ecef;
             border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
+            padding: 15px;
+            margin-bottom: 15px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             cursor: pointer;
         }
@@ -153,24 +154,41 @@
             background: #f8fff9;
         }
         
-        .item-card:hover {
+        .item-card:hover, .item-card:active {
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(0,0,0,0.15);
         }
         
         .item-header {
             display: flex;
-            align-items: center;
-            margin-bottom: 15px;
+            align-items: flex-start;
+            margin-bottom: 10px;
+            flex-direction: column;
+        }
+        
+        @media (min-width: 500px) {
+            .item-header {
+                flex-direction: row;
+                align-items: center;
+            }
         }
         
         .item-photo {
-            width: 100px;
-            height: 100px;
+            width: 80px;
+            height: 80px;
             border-radius: 8px;
             object-fit: cover;
             border: 2px solid #ddd;
-            margin-right: 15px;
+            margin-bottom: 10px;
+        }
+        
+        @media (min-width: 500px) {
+            .item-photo {
+                width: 100px;
+                height: 100px;
+                margin-right: 15px;
+                margin-bottom: 0;
+            }
         }
         
         .item-details {
@@ -181,34 +199,39 @@
             display: flex;
             gap: 10px;
             align-items: center;
-            margin-top: 15px;
+            margin-top: 10px;
+            flex-wrap: wrap;
         }
         
         .summary-section {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
-            padding: 30px;
+            padding: 20px;
             border-radius: 12px;
-            margin-top: 30px;
+            margin-top: 20px;
         }
         
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
         }
         
         .summary-card {
             background: rgba(255,255,255,0.1);
-            padding: 20px;
+            padding: 15px 10px;
             border-radius: 8px;
             text-align: center;
         }
         
         .summary-card h4 {
-            font-size: 2em;
+            font-size: 1.8em;
             margin-bottom: 5px;
+        }
+        
+        .summary-card p {
+            font-size: 0.9em;
         }
         
         .user-info {
@@ -216,7 +239,7 @@
             padding: 15px;
             border-radius: 8px;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         
         .hidden {
@@ -236,6 +259,22 @@
             z-index: 9999;
             color: white;
             font-size: 18px;
+            flex-direction: column;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255,255,255,0.3);
+            border-top: 5px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .error-message {
@@ -247,7 +286,6 @@
             margin-top: 10px;
         }
 
-        /* モーダル用スタイル */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -259,28 +297,54 @@
             align-items: center;
             justify-content: center;
             z-index: 1000;
+            padding: 20px;
         }
 
         .modal-content {
             background: white;
-            padding: 30px;
+            padding: 20px;
             border-radius: 15px;
             max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
+            width: 100%;
+            max-height: 90vh;
             overflow-y: auto;
         }
 
-        /* デバッグ情報を隠す */
-        body::after {
-            content: '';
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 50px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            z-index: 999;
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            
+            .header {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .main-content {
+                padding: 15px;
+            }
+            
+            .section {
+                padding: 15px;
+            }
+            
+            .category-buttons {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+                gap: 6px;
+            }
+            
+            .category-btn {
+                padding: 10px 6px;
+                font-size: 13px;
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
         }
     </style>
 </head>
@@ -313,8 +377,8 @@
                 <h3>📝 新しい品目を追加</h3>
                 
                 <div class="form-group">
-                    <label>📷 写真をアップロード <span style="color: #6c757d; font-size: 14px;">(自動圧縮されます)</span></label>
-                    <input type="file" id="photoInput" accept="image/*">
+                    <label>📷 写真をアップロード <span style="color: #6c757d; font-size: 14px;">(オプション)</span></label>
+                    <input type="file" id="photoInput" accept="image/*" capture="environment">
                     <div id="photoPreview" class="hidden" style="margin-top: 10px;">
                         <img id="previewImage" style="max-width: 200px; max-height: 150px; border-radius: 8px; border: 2px solid #ddd;">
                         <p id="compressionInfo" style="font-size: 12px; color: #6c757d; margin-top: 5px;"></p>
@@ -350,7 +414,7 @@
                     </div>
                     <div id="destinationDiv" class="form-group hidden">
                         <label>譲渡先/送り先</label>
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 10px;" id="destinationButtons">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;" id="destinationButtons">
                             <button type="button" class="category-btn" data-value="対馬">対馬</button>
                             <button type="button" class="category-btn" data-value="西新">西新</button>
                             <button type="button" class="category-btn" data-value="社長自宅">社長自宅</button>
@@ -432,6 +496,7 @@
             // エラーハンドリング
             function showError(message) {
                 console.error(message);
+                hideLoading();
                 alert('エラー: ' + message);
             }
 
@@ -443,7 +508,7 @@
 
                 const overlay = document.createElement('div');
                 overlay.className = 'loading-overlay';
-                overlay.innerHTML = '<div>📷 ' + message + '</div>';
+                overlay.innerHTML = '<div class="loading-spinner"></div><div>' + message + '</div>';
                 document.body.appendChild(overlay);
                 return overlay;
             }
@@ -478,36 +543,58 @@
                 }
             }
             
-            // 画像圧縮機能
-            function compressImage(file, maxWidth, quality) {
-                maxWidth = maxWidth || 800;
-                quality = quality || 0.7;
-                
+            // 軽量画像処理（モバイル対応）
+            function processImageForMobile(file) {
                 return new Promise(function(resolve, reject) {
                     try {
-                        if (!file || !file.type.startsWith('image/')) {
+                        // ファイルサイズチェック（5MB以下）
+                        if (file.size > 5 * 1024 * 1024) {
+                            reject(new Error('ファイルサイズが大きすぎます（5MB以下にしてください）'));
+                            return;
+                        }
+
+                        if (!file.type.startsWith('image/')) {
                             reject(new Error('有効な画像ファイルではありません'));
                             return;
                         }
 
+                        // 小さな画像はそのまま使用
+                        if (file.size < 500 * 1024) { // 500KB以下
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                resolve({
+                                    dataUrl: e.target.result,
+                                    originalSize: file.size,
+                                    compressedSize: file.size,
+                                    compressionRatio: '0'
+                                });
+                            };
+                            reader.onerror = function() {
+                                reject(new Error('ファイル読み込みエラー'));
+                            };
+                            reader.readAsDataURL(file);
+                            return;
+                        }
+
+                        // 大きな画像は圧縮
                         const reader = new FileReader();
-                        reader.onerror = function() { 
-                            reject(new Error('ファイル読み込みエラー')); 
-                        };
-                        
                         reader.onload = function(e) {
                             try {
                                 const img = new Image();
-                                img.onerror = function() { 
-                                    reject(new Error('画像の読み込みに失敗しました')); 
-                                };
-                                
                                 img.onload = function() {
                                     try {
                                         const canvas = document.createElement('canvas');
+                                        const ctx = canvas.getContext('2d');
                                         
-                                        let width = img.width;
-                                        let height = img.height;
+                                        if (!ctx) {
+                                            reject(new Error('Canvas contextの取得に失敗しました'));
+                                            return;
+                                        }
+
+                                        // モバイル向けサイズ制限
+                                        const maxWidth = window.innerWidth > 768 ? 600 : 400;
+                                        let { width, height } = img;
+                                        
                                         if (width > maxWidth) {
                                             const scale = maxWidth / width;
                                             width = maxWidth;
@@ -517,15 +604,11 @@
                                         canvas.width = width;
                                         canvas.height = height;
                                         
-                                        const ctx = canvas.getContext('2d');
-                                        if (!ctx) {
-                                            reject(new Error('Canvas contextの取得に失敗しました'));
-                                            return;
-                                        }
-
-                                        ctx.imageSmoothingEnabled = true;
-                                        ctx.imageSmoothingQuality = 'high';
+                                        // 高品質設定を簡素化（モバイル向け）
                                         ctx.drawImage(img, 0, 0, width, height);
+                                        
+                                        // モバイル向け圧縮率を調整
+                                        const quality = file.size > 2 * 1024 * 1024 ? 0.5 : 0.7;
                                         
                                         canvas.toBlob(function(blob) {
                                             if (!blob) {
@@ -534,10 +617,6 @@
                                             }
 
                                             const compressedReader = new FileReader();
-                                            compressedReader.onerror = function() { 
-                                                reject(new Error('圧縮画像の読み込みエラー')); 
-                                            };
-                                            
                                             compressedReader.onload = function(e) {
                                                 resolve({
                                                     dataUrl: e.target.result,
@@ -546,20 +625,29 @@
                                                     compressionRatio: ((1 - blob.size/file.size) * 100).toFixed(1)
                                                 });
                                             };
+                                            compressedReader.onerror = function() {
+                                                reject(new Error('圧縮画像の読み込みエラー'));
+                                            };
                                             compressedReader.readAsDataURL(blob);
                                         }, 'image/jpeg', quality);
                                     } catch (error) {
-                                        reject(new Error('画像処理中にエラーが発生しました: ' + error.message));
+                                        reject(new Error('画像処理中にエラー: ' + error.message));
                                     }
+                                };
+                                img.onerror = function() {
+                                    reject(new Error('画像の読み込みに失敗しました'));
                                 };
                                 img.src = e.target.result;
                             } catch (error) {
-                                reject(new Error('画像オブジェクトの作成に失敗しました: ' + error.message));
+                                reject(new Error('画像オブジェクトの作成に失敗: ' + error.message));
                             }
+                        };
+                        reader.onerror = function() {
+                            reject(new Error('ファイル読み込みエラー'));
                         };
                         reader.readAsDataURL(file);
                     } catch (error) {
-                        reject(new Error('ファイル処理の初期化に失敗しました: ' + error.message));
+                        reject(new Error('ファイル処理の初期化に失敗: ' + error.message));
                     }
                 });
             }
@@ -577,6 +665,7 @@
                     const itemCount = document.getElementById('itemCount').value;
                     const destination = document.getElementById('destination').value.trim();
                     
+                    // 写真または品名のどちらかがあればOK
                     if (!photoInput.files[0] && !itemName) {
                         alert('写真または品名のどちらかを入力してください。');
                         return;
@@ -589,7 +678,7 @@
                     
                     const item = {
                         id: Date.now(),
-                        name: itemName || ('写真_' + (photoInput.files[0] ? photoInput.files[0].name : 'unknown')),
+                        name: itemName || ('写真_' + (photoInput.files[0] ? photoInput.files[0].name : Date.now())),
                         count: parseInt(itemCount) || 1,
                         category: selectedCategory || 'supplies',
                         handling: selectedHandling || 'undecided',
@@ -602,17 +691,11 @@
                     
                     if (photoInput.files[0]) {
                         const file = photoInput.files[0];
+                        const loadingOverlay = showLoading('画像を処理中...');
                         
-                        if (!file.type.startsWith('image/')) {
-                            alert('画像ファイルを選択してください。');
-                            return;
-                        }
-                        
-                        const loadingOverlay = showLoading('画像を圧縮中...');
-                        
-                        compressImage(file, 800, 0.7)
-                            .then(function(compressed) {
-                                item.photoData = compressed.dataUrl;
+                        processImageForMobile(file)
+                            .then(function(processed) {
+                                item.photoData = processed.dataUrl;
                                 items.push(item);
                                 displayItems();
                                 updateSummary();
@@ -620,20 +703,33 @@
                                 hideLoading();
                                 saveData();
                                 
-                                const message = '✅ 品目「' + item.name + '」を追加しました！\n📷 写真を' + compressed.compressionRatio + '%圧縮して保存しました';
+                                let message = '✅ 品目「' + item.name + '」を追加しました！';
+                                if (processed.compressionRatio !== '0') {
+                                    message += '\n📷 写真を' + processed.compressionRatio + '%圧縮しました';
+                                }
                                 alert(message);
                             })
                             .catch(function(error) {
                                 hideLoading();
-                                showError('画像の処理中にエラーが発生しました: ' + error.message);
+                                console.error('画像処理エラー:', error);
+                                
+                                // 画像処理に失敗した場合、写真なしで追加するかユーザーに確認
+                                if (confirm('画像の処理に失敗しました。\n写真なしで品目を追加しますか？\n\nエラー: ' + error.message)) {
+                                    items.push(item);
+                                    displayItems();
+                                    updateSummary();
+                                    clearForm();
+                                    saveData();
+                                    alert('✅ 品目「' + item.name + '」を写真なしで追加しました');
+                                }
                             });
                     } else {
+                        // 写真なしの場合
                         items.push(item);
                         displayItems();
                         updateSummary();
                         clearForm();
                         saveData();
-                        
                         alert('✅ 品目「' + item.name + '」を追加しました！');
                     }
                 } catch (error) {
@@ -652,12 +748,10 @@
                     document.getElementById('destinationDiv').classList.add('hidden');
                     document.getElementById('photoPreview').classList.add('hidden');
                     
-                    // 全てのボタンの選択状態をクリア
                     document.querySelectorAll('.category-btn').forEach(function(btn) {
                         btn.classList.remove('active');
                     });
                     
-                    // 送り先の入力欄を非表示
                     document.getElementById('destination').style.display = 'none';
                     
                     selectedCategory = '';
@@ -682,7 +776,7 @@
                             '<div class="item-header">' +
                                 (item.photoData ? 
                                     '<img src="' + item.photoData + '" alt="' + item.name + '" class="item-photo">' : 
-                                    '<div class="item-photo" style="background: #f0f0f0; display: flex; align-items: center; justify-content: center; color: #999; font-size: 24px;">📷</div>'
+                                    '<div class="item-photo" style="background: #f0f0f0; display: flex; align-items: center; justify-content: center; color: #999; font-size: 20px;">📷</div>'
                                 ) +
                                 '<div class="item-details">' +
                                     '<h4>' + item.name + '</h4>' +
@@ -690,18 +784,18 @@
                                     '<p><strong>属性:</strong> ' + (categoryNames[item.category] || item.category) + '</p>' +
                                     '<p><strong>取扱い:</strong> <span style="color: ' + (item.handling === 'undecided' ? '#ffc107' : '#28a745') + '; font-weight: bold;">' + (handlingNames[item.handling] || item.handling) + '</span></p>' +
                                     (item.destination ? '<p><strong>送り先:</strong> ' + item.destination + '</p>' : '') +
-                                    '<p style="font-size: 12px; color: #6c757d; margin-top: 10px;">' +
-                                        '登録者: ' + item.addedBy + ' | 登録日時: ' + item.addedAt +
+                                    '<p style="font-size: 12px; color: #6c757d; margin-top: 8px;">' +
+                                        '登録者: ' + item.addedBy + ' | ' + item.addedAt +
                                     '</p>' +
-                                    (item.handling === 'undecided' ? '<p style="color: #ffc107; font-weight: bold; margin-top: 5px;">📋 クリックして処分方法を決定</p>' : '') +
+                                    (item.handling === 'undecided' ? '<p style="color: #ffc107; font-weight: bold; margin-top: 5px; font-size: 14px;">📋 タップして処分方法を決定</p>' : '') +
                                 '</div>' +
                             '</div>' +
                             '<div class="item-controls">' +
-                                '<label>' +
+                                '<label style="display: flex; align-items: center; gap: 5px;">' +
                                     '<input type="checkbox" ' + (item.completed ? 'checked' : '') + ' data-toggle-completed="' + item.id + '">' +
-                                    '決定済み' +
+                                    '<span>決定済み</span>' +
                                 '</label>' +
-                                '<button class="btn btn-danger" data-delete-item="' + item.id + '" style="margin-left: auto;">🗑️ 削除</button>' +
+                                '<button class="btn btn-danger" data-delete-item="' + item.id + '" style="margin-left: auto; font-size: 12px; padding: 8px 12px;">🗑️ 削除</button>' +
                             '</div>' +
                         '</div>';
                     }).join('');
@@ -734,40 +828,40 @@
                     }
                     
                     const photoDisplay = item.photoData ? 
-                        '<img src="' + item.photoData + '" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-bottom: 20px;">' : 
+                        '<img src="' + item.photoData + '" style="max-width: 100%; max-height: 150px; border-radius: 8px; margin-bottom: 15px;">' : 
                         '';
                     
                     const modalHTML = '<div id="editModal" class="modal-overlay">' +
                         '<div class="modal-content">' +
-                            '<h3 style="margin-bottom: 20px; color: #2c3e50;">📝 処分方法を決定</h3>' +
-                            '<div style="margin-bottom: 20px;">' +
-                                '<h4>' + item.name + '</h4>' +
+                            '<h3 style="margin-bottom: 15px; color: #2c3e50; font-size: 1.2em;">📝 処分方法を決定</h3>' +
+                            '<div style="margin-bottom: 15px;">' +
+                                '<h4 style="font-size: 1.1em;">' + item.name + '</h4>' +
                                 '<p><strong>個数:</strong> ' + item.count + '個</p>' +
                                 '<p><strong>属性:</strong> ' + categoryNames[item.category] + '</p>' +
                                 '<p><strong>登録者:</strong> ' + item.addedBy + '</p>' +
                             '</div>' +
                             photoDisplay +
-                            '<div style="margin-bottom: 20px;">' +
-                                '<label style="display: block; margin-bottom: 10px; font-weight: bold;">⚡ 処分方法を選択してください</label>' +
-                                '<div style="display: grid; gap: 10px;">' +
+                            '<div style="margin-bottom: 15px;">' +
+                                '<label style="display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px;">⚡ 処分方法を選択してください</label>' +
+                                '<div style="display: grid; gap: 8px;">' +
                                     '<button class="category-btn" data-edit-handling="disposal" id="editDisposal">処分</button>' +
                                     '<button class="category-btn" data-edit-handling="transfer" id="editTransfer">譲渡</button>' +
                                     '<button class="category-btn" data-edit-handling="send" id="editSend">送り</button>' +
                                 '</div>' +
                             '</div>' +
-                            '<div id="editDestinationDiv" style="margin-bottom: 20px; display: none;">' +
-                                '<label style="display: block; margin-bottom: 8px; font-weight: bold;">📍 譲渡先/送り先</label>' +
-                                '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 10px;">' +
+                            '<div id="editDestinationDiv" style="margin-bottom: 15px; display: none;">' +
+                                '<label style="display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px;">📍 譲渡先/送り先</label>' +
+                                '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;">' +
                                     '<button type="button" class="category-btn" data-edit-destination="対馬">対馬</button>' +
                                     '<button type="button" class="category-btn" data-edit-destination="西新">西新</button>' +
                                     '<button type="button" class="category-btn" data-edit-destination="社長自宅">社長自宅</button>' +
                                     '<button type="button" class="category-btn" data-edit-destination="その他">その他</button>' +
                                 '</div>' +
-                                '<input type="text" id="editDestination" placeholder="その他の場合は直接入力" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; display: none;">' +
+                                '<input type="text" id="editDestination" placeholder="その他の場合は直接入力" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 6px; display: none;">' +
                             '</div>' +
-                            '<div style="display: flex; gap: 10px; justify-content: flex-end;">' +
-                                '<button class="btn btn-primary" data-save-edit="' + item.id + '">保存</button>' +
-                                '<button class="btn" data-close-modal style="background: #6c757d; color: white;">キャンセル</button>' +
+                            '<div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;">' +
+                                '<button class="btn btn-primary" data-save-edit="' + item.id + '" style="font-size: 14px;">保存</button>' +
+                                '<button class="btn" data-close-modal style="background: #6c757d; color: white; font-size: 14px;">キャンセル</button>' +
                             '</div>' +
                         '</div>' +
                     '</div>';
@@ -836,13 +930,15 @@
                         return;
                     }
                     
-                    const itemName = item.name;
-                    items = items.filter(function(item) { return item.id !== itemId; });
-                    
-                    displayItems();
-                    updateSummary();
-                    saveData();
-                    alert('✅ 「' + itemName + '」を削除しました');
+                    if (confirm('「' + item.name + '」を削除しますか？')) {
+                        const itemName = item.name;
+                        items = items.filter(function(item) { return item.id !== itemId; });
+                        
+                        displayItems();
+                        updateSummary();
+                        saveData();
+                        alert('✅ 「' + itemName + '」を削除しました');
+                    }
                 } catch (error) {
                     showError('削除中にエラーが発生しました: ' + error.message);
                 }
@@ -934,6 +1030,7 @@
             function saveData() {
                 try {
                     localStorage.setItem('armonieItems', JSON.stringify(items));
+                    console.log('データを保存しました:', items.length, '件');
                 } catch (error) {
                     console.warn('データ保存に失敗しました:', error);
                 }
@@ -968,21 +1065,18 @@
                     // カテゴリー選択ボタン
                     document.getElementById('categoryButtons').addEventListener('click', function(e) {
                         if (e.target.classList.contains('category-btn')) {
-                            // 同じグループ内の他のボタンの選択を解除
                             document.querySelectorAll('#categoryButtons .category-btn').forEach(function(btn) {
                                 btn.classList.remove('active');
                             });
                             
                             e.target.classList.add('active');
                             selectedCategory = e.target.getAttribute('data-value');
-                            console.log('選択されたカテゴリー:', selectedCategory);
                         }
                     });
 
                     // 取扱い方法選択ボタン
                     document.getElementById('handlingButtons').addEventListener('click', function(e) {
                         if (e.target.classList.contains('category-btn')) {
-                            // 同じグループ内の他のボタンの選択を解除
                             document.querySelectorAll('#handlingButtons .category-btn').forEach(function(btn) {
                                 btn.classList.remove('active');
                             });
@@ -993,7 +1087,6 @@
                             const destinationDiv = document.getElementById('destinationDiv');
                             if (selectedHandling === 'transfer' || selectedHandling === 'send') {
                                 destinationDiv.classList.remove('hidden');
-                                // 送り先ボタンの選択状態をクリア
                                 document.querySelectorAll('#destinationButtons .category-btn').forEach(function(btn) {
                                     btn.classList.remove('active');
                                 });
@@ -1002,8 +1095,6 @@
                             } else {
                                 destinationDiv.classList.add('hidden');
                             }
-                            
-                            console.log('選択された取扱い方法:', selectedHandling);
                         }
                     });
 
@@ -1012,7 +1103,6 @@
                         if (e.target.classList.contains('category-btn')) {
                             const destination = e.target.getAttribute('data-value');
                             
-                            // 同じグループ内の他のボタンの選択を解除
                             document.querySelectorAll('#destinationButtons .category-btn').forEach(function(btn) {
                                 btn.classList.remove('active');
                             });
@@ -1022,17 +1112,13 @@
                             const destinationInput = document.getElementById('destination');
                             
                             if (destination === 'その他') {
-                                // その他の場合は入力欄を表示
                                 destinationInput.style.display = 'block';
                                 destinationInput.value = '';
                                 destinationInput.focus();
                             } else {
-                                // 既定の送り先の場合は入力欄を非表示にして値を設定
                                 destinationInput.style.display = 'none';
                                 destinationInput.value = destination;
                             }
-                            
-                            console.log('選択された送り先:', destination);
                         }
                     });
 
@@ -1068,7 +1154,6 @@
                             const destinationDiv = document.getElementById('editDestinationDiv');
                             if (handling === 'transfer' || handling === 'send') {
                                 destinationDiv.style.display = 'block';
-                                // 送り先ボタンの選択状態をクリア
                                 document.querySelectorAll('#editDestinationDiv [data-edit-destination]').forEach(function(btn) {
                                     btn.classList.remove('active');
                                 });
@@ -1082,7 +1167,6 @@
                         } else if (e.target.hasAttribute('data-edit-destination')) {
                             const destination = e.target.getAttribute('data-edit-destination');
                             
-                            // 同じグループ内の他のボタンの選択を解除
                             document.querySelectorAll('#editDestinationDiv [data-edit-destination]').forEach(function(btn) {
                                 btn.classList.remove('active');
                             });
@@ -1092,12 +1176,10 @@
                             const destinationInput = document.getElementById('editDestination');
                             
                             if (destination === 'その他') {
-                                // その他の場合は入力欄を表示
                                 destinationInput.style.display = 'block';
                                 destinationInput.value = '';
                                 destinationInput.focus();
                             } else {
-                                // 既定の送り先の場合は入力欄を非表示にして値を設定
                                 destinationInput.style.display = 'none';
                                 destinationInput.value = destination;
                             }
@@ -1109,7 +1191,7 @@
                         }
                     });
 
-                    // 写真選択時のプレビュー機能
+                    // 写真選択時のプレビュー機能（モバイル対応）
                     document.getElementById('photoInput').addEventListener('change', function(event) {
                         const file = event.target.files[0];
                         const previewDiv = document.getElementById('photoPreview');
@@ -1123,23 +1205,36 @@
                         
                         if (!file.type.startsWith('image/')) {
                             alert('画像ファイルを選択してください。');
+                            event.target.value = '';
+                            return;
+                        }
+                        
+                        // ファイルサイズチェック
+                        if (file.size > 5 * 1024 * 1024) {
+                            alert('ファイルサイズが大きすぎます（5MB以下にしてください）');
+                            event.target.value = '';
                             return;
                         }
                         
                         previewDiv.classList.remove('hidden');
-                        compressionInfo.textContent = '圧縮中...';
+                        compressionInfo.textContent = '処理中...';
                         
-                        compressImage(file, 800, 0.7)
-                            .then(function(compressed) {
-                                previewImg.src = compressed.dataUrl;
-                                compressionInfo.innerHTML = 
-                                    '📊 元サイズ: ' + (compressed.originalSize / 1024).toFixed(1) + 'KB → ' +
-                                    '圧縮後: ' + (compressed.compressedSize / 1024).toFixed(1) + 'KB ' +
-                                    '(' + compressed.compressionRatio + '%削減)';
+                        processImageForMobile(file)
+                            .then(function(processed) {
+                                previewImg.src = processed.dataUrl;
+                                if (processed.compressionRatio === '0') {
+                                    compressionInfo.innerHTML = '📊 ファイルサイズ: ' + (processed.originalSize / 1024).toFixed(1) + 'KB（圧縮不要）';
+                                } else {
+                                    compressionInfo.innerHTML = 
+                                        '📊 元サイズ: ' + (processed.originalSize / 1024).toFixed(1) + 'KB → ' +
+                                        '圧縮後: ' + (processed.compressedSize / 1024).toFixed(1) + 'KB ' +
+                                        '(' + processed.compressionRatio + '%削減)';
+                                }
                             })
                             .catch(function(error) {
-                                console.error('プレビュー圧縮エラー:', error);
-                                compressionInfo.textContent = 'プレビューの生成に失敗しました';
+                                console.error('プレビュー処理エラー:', error);
+                                compressionInfo.textContent = 'プレビューの生成に失敗しました: ' + error.message;
+                                compressionInfo.style.color = '#dc3545';
                             });
                     });
                 } catch (error) {
@@ -1205,9 +1300,6 @@
                     displayItems();
                     updateSummary();
                     
-                    // データの自動保存設定
-                    setInterval(saveData, 30000); // 30秒ごとに保存
-                    
                     console.log('✅ システム初期化完了');
                 } catch (error) {
                     showError('システムの初期化中にエラーが発生しました: ' + error.message);
@@ -1224,7 +1316,7 @@
             // ページ離脱時にデータを保存
             window.addEventListener('beforeunload', saveData);
             
-            console.log('✅ スクリプト読み込み完了');
+            console.log('✅ モバイル対応スクリプト読み込み完了');
         })();
     </script>
 </body>
