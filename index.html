@@ -277,15 +277,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        .error-message {
-            color: #dc3545;
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
-        }
-
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -593,7 +584,8 @@
 
                                         // モバイル向けサイズ制限
                                         const maxWidth = window.innerWidth > 768 ? 600 : 400;
-                                        let { width, height } = img;
+                                        let width = img.width;
+                                        let height = img.height;
                                         
                                         if (width > maxWidth) {
                                             const scale = maxWidth / width;
