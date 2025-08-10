@@ -1,7 +1,6 @@
 {
   "name": "harmoniegen-bihin",
   "version": "1.0.0",
-  "type": "module",
   "description": "Harmony Inventory Management System",
   "scripts": {
     "build": "echo 'Static build'",
