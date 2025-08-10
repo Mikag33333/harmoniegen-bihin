@@ -37,7 +37,7 @@ export default async function handler(req, res) {
                     '品名': name,
                     '個数': count,
                     '属性': category,
-                    '取扱い方法': handling,
+                    '取り扱い方法': handling,
                     '送り先': destination,
                     '決定済み': false,
                     '登録者': addedBy,
