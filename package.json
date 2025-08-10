@@ -1,15 +1,15 @@
 {
-  "name": "harmoniegen-bihin",
+  "name": "harmoniegen-inventory",
   "version": "1.0.0",
-  "description": "Harmony Inventory Management System",
+  "description": "",
+  "main": "index.js",
   "scripts": {
-    "build": "echo 'Static build'",
-    "start": "echo 'Static start'"
+    "start": "node index.js"
   },
-  "dependencies": {
-    "airtable": "^0.12.2"
-  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "engines": {
-    "node": "18.x"
+    "node": "22.x"
   }
 }
