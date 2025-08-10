@@ -1,9 +1,21 @@
 import Airtable from 'airtable';
 
-const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
+const base = new Airtable({ 
+    apiKey: process.env.AIRTABLE_API_KEY 
+}).base(process.env.AIRTABLE_BASE_ID);
+
 const table = base(process.env.AIRTABLE_TABLE_NAME);
 
 export default async function handler(req, res) {
+    // CORS設定を追加
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
     try {
         switch (req.method) {
             case 'GET':
@@ -32,6 +44,6 @@ export default async function handler(req, res) {
         }
     } catch (error) {
         console.error('APIエラー:', error);
-        res.status(500).json({ error: 'サーバーエラーが発生しました。' });
+        res.status(500).json({ error: 'サーバーエラーが発生しました。', details: error.message });
     }
 }
