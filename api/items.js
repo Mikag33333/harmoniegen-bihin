@@ -1,4 +1,4 @@
-import Airtable from 'airtable';
+const Airtable = require('airtable');
 
 const base = new Airtable({ 
     apiKey: process.env.AIRTABLE_API_KEY 
@@ -6,8 +6,8 @@ const base = new Airtable({
 
 const table = base(process.env.AIRTABLE_TABLE_NAME);
 
-export default async function handler(req, res) {
-    // CORS設定を追加
+module.exports = async (req, res) => {
+    // CORS設定
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -46,4 +46,4 @@ export default async function handler(req, res) {
         console.error('APIエラー:', error);
         res.status(500).json({ error: 'サーバーエラーが発生しました。', details: error.message });
     }
-}
+};
