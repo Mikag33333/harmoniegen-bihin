@@ -449,7 +449,7 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>🏷️ 属性を選択</label>
+                    <label>🏷️ 属性を選択 <span style="color: #6c757d; font-size: 14px;">(後で変更可能)</span></label>
                     <div class="category-buttons" id="categoryButtons">
                         <button class="category-btn" data-value="厨房器具">厨房器具</button>
                         <button class="category-btn" data-value="店内機材">店内機材</button>
@@ -459,11 +459,12 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>⚡ 取扱い方法</label>
+                    <label>⚡ 取扱い方法 <span style="color: #6c757d; font-size: 14px;">(社長が後で決定)</span></label>
                     <div class="category-buttons" id="handlingButtons">
                         <button class="category-btn" data-value="処分">処分</button>
                         <button class="category-btn" data-value="譲渡">譲渡</button>
                         <button class="category-btn" data-value="送り">送り</button>
+                        <button class="category-btn" data-value="保留">保留</button>
                     </div>
                     <div id="destinationDiv" class="form-group hidden">
                         <label>譲渡先/送り先</label>
@@ -690,7 +691,166 @@
                 }
             }
 
-            // Google Apps Scriptで品目削除
+            // 品目の処分方法を更新
+            async function updateItemHandlingInAPI(itemId, handlingData) {
+                showLoading('処分方法を更新しています...');
+                try {
+                    if (!gasUrl) {
+                        throw new Error('Google Apps Script URLが設定されていません');
+                    }
+
+                    const formData = new FormData();
+                    formData.append('action', 'updateHandling');
+                    formData.append('id', itemId);
+                    formData.append('handling', handlingData.handling);
+                    formData.append('destination', handlingData.destination || '');
+
+                    const response = await fetch(gasUrl, {
+                        method: 'POST',
+                        mode: 'cors',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`更新エラー: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    if (result.success) {
+                        await loadItemsFromAPI();
+                        hideLoading();
+                        return true;
+                    } else {
+                        throw new Error(result.error || '更新に失敗しました');
+                    }
+                } catch (error) {
+                    console.error('処分方法更新エラー:', error);
+                    hideLoading();
+                    alert('❌ 処分方法更新中にエラーが発生しました: ' + error.message);
+                    return false;
+                }
+            }
+
+            // 処分方法決定モーダルを表示
+            function showHandlingModal(item) {
+                const modalHtml = `
+                    <div class="modal-overlay" id="handlingModal">
+                        <div class="modal-content">
+                            <h3>📋 処分方法を決定</h3>
+                            <p><strong>品目:</strong> ${item.name}</p>
+                            <p><strong>現在の状況:</strong> ${item.handling}${item.destination ? ' (' + item.destination + ')' : ''}</p>
+                            
+                            <div class="form-group">
+                                <label>⚡ 新しい取扱い方法</label>
+                                <div class="category-buttons" id="modalHandlingButtons">
+                                    <button class="category-btn" data-value="処分">処分</button>
+                                    <button class="category-btn" data-value="譲渡">譲渡</button>
+                                    <button class="category-btn" data-value="送り">送り</button>
+                                    <button class="category-btn" data-value="保留">保留</button>
+                                </div>
+                            </div>
+                            
+                            <div id="modalDestinationDiv" class="form-group hidden">
+                                <label>譲渡先/送り先</label>
+                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;" id="modalDestinationButtons">
+                                    <button type="button" class="category-btn" data-value="対馬">対馬</button>
+                                    <button type="button" class="category-btn" data-value="西新">西新</button>
+                                    <button type="button" class="category-btn" data-value="社長自宅">社長自宅</button>
+                                    <button type="button" class="category-btn" data-value="その他">その他</button>
+                                </div>
+                                <input type="text" id="modalDestination" placeholder="その他の場合は直接入力" style="display: none;">
+                            </div>
+                            
+                            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                                <button class="btn btn-success" id="saveHandlingBtn">💾 保存</button>
+                                <button class="btn btn-danger" id="cancelHandlingBtn">❌ キャンセル</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                
+                let selectedHandling = '';
+                let selectedDestination = '';
+                
+                // 取扱い方法選択
+                document.getElementById('modalHandlingButtons').addEventListener('click', function(e) {
+                    if (e.target.classList.contains('category-btn')) {
+                        document.querySelectorAll('#modalHandlingButtons .category-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                        e.target.classList.add('active');
+                        selectedHandling = e.target.dataset.value;
+                        
+                        const destinationDiv = document.getElementById('modalDestinationDiv');
+                        if (selectedHandling === '譲渡' || selectedHandling === '送り') {
+                            destinationDiv.classList.remove('hidden');
+                        } else {
+                            destinationDiv.classList.add('hidden');
+                            selectedDestination = '';
+                        }
+                    }
+                });
+                
+                // 送り先選択
+                document.getElementById('modalDestinationButtons').addEventListener('click', function(e) {
+                    if (e.target.classList.contains('category-btn')) {
+                        document.querySelectorAll('#modalDestinationButtons .category-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                        e.target.classList.add('active');
+                        
+                        const destinationInput = document.getElementById('modalDestination');
+                        if (e.target.dataset.value === 'その他') {
+                            destinationInput.style.display = 'block';
+                            destinationInput.focus();
+                        } else {
+                            destinationInput.style.display = 'none';
+                            destinationInput.value = e.target.dataset.value;
+                            selectedDestination = e.target.dataset.value;
+                        }
+                    }
+                });
+                
+                // その他の入力
+                document.getElementById('modalDestination').addEventListener('input', function(e) {
+                    selectedDestination = e.target.value;
+                });
+                
+                // 保存ボタン
+                document.getElementById('saveHandlingBtn').addEventListener('click', async function() {
+                    if (!selectedHandling) {
+                        alert('取扱い方法を選択してください。');
+                        return;
+                    }
+                    
+                    const finalDestination = (selectedHandling === '譲渡' || selectedHandling === '送り') ? 
+                        selectedDestination : '';
+                    
+                    const success = await updateItemHandlingInAPI(item.id, {
+                        handling: selectedHandling,
+                        destination: finalDestination
+                    });
+                    
+                    if (success) {
+                        document.getElementById('handlingModal').remove();
+                        alert('✅ 処分方法が更新されました！');
+                    }
+                });
+                
+                // キャンセルボタン
+                document.getElementById('cancelHandlingBtn').addEventListener('click', function() {
+                    document.getElementById('handlingModal').remove();
+                });
+                
+                // モーダル外クリックで閉じる
+                document.getElementById('handlingModal').addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        this.remove();
+                    }
+                });
+            }
             async function deleteItemFromAPI(itemId) {
                 showLoading('品目を削除しています...');
                 try {
@@ -891,10 +1051,16 @@
                     
                     const itemDetails = document.createElement('div');
                     itemDetails.className = 'item-details';
+                    
+                    // 取扱い方法の表示を改善
+                    const handlingText = item.handling === '未決定' ? 
+                        '<span style="color: #dc3545; font-weight: bold;">⚠️ 決定待ち</span>' : 
+                        `⚡ ${item.handling}${item.destination ? ' (' + item.destination + ')' : ''}`;
+                    
                     itemDetails.innerHTML = `
                         <h3>${item.name} (${item.count}個)</h3>
                         <p style="font-size: 14px; color: #666;">
-                            🏷️ ${item.category} | ⚡ ${item.handling}${item.destination ? ' (' + item.destination + ')' : ''}
+                            🏷️ ${item.category} | ${handlingText}
                         </p>
                         <p style="font-size: 12px; color: #888; margin-top: 5px;">
                             登録者: ${item.addedBy}
@@ -916,6 +1082,9 @@
                     controls.innerHTML = `
                         <button class="btn btn-info btn-toggle-completed">
                             ${item.completed ? '✅ 決定済み' : '☑️ 決定済みにする'}
+                        </button>
+                        <button class="btn btn-primary btn-edit-handling">
+                            ✏️ 処分方法を決定
                         </button>
                         <button class="btn btn-danger btn-delete-item">
                             🗑️ 削除
@@ -1090,15 +1259,9 @@
                         return;
                     }
 
-                    if (!selectedCategory) {
-                        alert('属性を選択してください。');
-                        return;
-                    }
-
-                    if (!selectedHandling) {
-                        alert('取扱い方法を選択してください。');
-                        return;
-                    }
+                    // 取扱い方法と属性は必須ではない（未選択でもOK）
+                    const finalCategory = selectedCategory || '未分類';
+                    const finalHandling = selectedHandling || '未決定';
                     
                     const destinationInput = document.getElementById('destination');
                     const finalDestination = (selectedHandling === '譲渡' || selectedHandling === '送り') ? 
@@ -1118,8 +1281,8 @@
                     const newItem = {
                         name: itemName,
                         count: itemCount,
-                        category: selectedCategory,
-                        handling: selectedHandling,
+                        category: finalCategory,
+                        handling: finalHandling,
                         destination: finalDestination,
                         addedBy: currentUser,
                         memo: itemMemo,
@@ -1148,7 +1311,7 @@
                 // CSVエクスポートボタン
                 document.getElementById('exportBtn').addEventListener('click', exportToCSV);
 
-                // アイテムリストのクリックイベント（決定済み切り替えと削除）
+                // アイテムリストのクリックイベント（決定済み切り替え、処分方法決定、削除）
                 document.addEventListener('click', async function(e) {
                     if (e.target.classList.contains('btn-toggle-completed')) {
                         const itemCard = e.target.closest('.item-card');
@@ -1167,6 +1330,16 @@
                                 displayItems();
                                 updateSummary();
                             }
+                        }
+                    }
+                    
+                    if (e.target.classList.contains('btn-edit-handling')) {
+                        const itemCard = e.target.closest('.item-card');
+                        const itemId = itemCard.dataset.id;
+                        const item = items.find(item => item.id === itemId);
+                        
+                        if (item) {
+                            showHandlingModal(item);
                         }
                     }
                     
