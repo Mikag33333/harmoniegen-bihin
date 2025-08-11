@@ -67,6 +67,19 @@
             border: 2px solid #ffc107;
             color: #856404;
         }
+
+        .gas-url-section {
+            background: #fff3cd;
+            border: 2px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .gas-url-section h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
         
         .main-content {
             padding: 20px;
@@ -329,67 +342,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 20px;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            max-width: 500px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .setup-section {
-            background: #e8f4f8;
-            border: 2px solid #17a2b8;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }
-
-        .setup-steps {
-            list-style: none;
-            counter-reset: step-counter;
-        }
-
-        .setup-steps li {
-            counter-increment: step-counter;
-            margin-bottom: 15px;
-            padding-left: 30px;
-            position: relative;
-        }
-
-        .setup-steps li::before {
-            content: counter(step-counter);
-            position: absolute;
-            left: 0;
-            top: 0;
-            background: #17a2b8;
-            color: white;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
         @media (max-width: 768px) {
             body {
                 padding: 5px;
@@ -432,10 +384,24 @@
     <div class="container">
         <div class="header">
             <h1>🍽️ アルモニー玄</h1>
-            <p>機材・備品管理システム（Vercel版）</p>
+            <p>機材・備品管理システム（Google Sheets版）</p>
         </div>
         
         <div class="main-content">
+            <!-- Google Apps Script URL設定セクション -->
+            <div class="gas-url-section">
+                <h4>⚙️ Google Apps Script URL設定</h4>
+                <div class="form-group">
+                    <label>Google Apps Script ウェブアプリURL</label>
+                    <input type="url" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec" 
+                           value="https://script.google.com/macros/s/AKfycbyS16NIjTSXfXQnl6AgU-TfqjUuyCJQvj3ubeTTro_VJWG_kMb_rfMxhqljqH0hg0fA/exec">
+                    <small style="color: #666; font-size: 12px;">
+                        Google Apps Scriptで作成したウェブアプリのURLを入力してください
+                    </small>
+                </div>
+                <button class="btn btn-primary" id="testConnectionBtn">接続テスト</button>
+            </div>
+
             <div id="databaseStatus" class="database-status connecting">
                 🟡 データ読み込み中...
             </div>
@@ -521,7 +487,7 @@
                 <h3>📦 登録済み品目一覧</h3>
                 <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
                     <button class="btn btn-info" id="refreshBtn">🔄 最新データを取得</button>
-                    <button class="btn btn-primary" id="openAirtableBtn">📊 Airtableで確認</button>
+                    <button class="btn btn-primary" id="openSheetsBtn">📊 Google Sheetsで確認</button>
                 </div>
                 <div id="itemsList">
                     <p style="text-align: center; color: #6c757d; padding: 40px;">データがありません</p>
@@ -569,6 +535,7 @@
             let items = [];
             let selectedCategory = '';
             let selectedHandling = '';
+            let gasUrl = '';
             
             // 接続状態の更新
             function updateConnectionStatus(status) {
@@ -577,7 +544,7 @@
                 
                 switch(status) {
                     case 'connected':
-                        statusDiv.innerHTML = '🟢 Airtable接続済み - データ同期可能';
+                        statusDiv.innerHTML = '🟢 Google Sheets接続済み - データ同期可能';
                         break;
                     case 'connecting':
                         statusDiv.innerHTML = '🟡 データ同期中...';
@@ -588,60 +555,92 @@
                 }
             }
             
-            // Airtableからデータ読み込み
+            // Google Apps Scriptからデータ読み込み
             async function loadItemsFromAPI() {
                 updateConnectionStatus('connecting');
                 try {
-                    const response = await fetch('/api/items');
-                    if (!response.ok) {
-                        throw new Error(`APIからのデータ取得エラー: ${response.status}`);
+                    if (!gasUrl) {
+                        throw new Error('Google Apps Script URLが設定されていません');
                     }
+
+                    const response = await fetch(gasUrl + '?action=getItems', {
+                        method: 'GET',
+                        mode: 'cors'
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Google Apps Scriptからのデータ取得エラー: ${response.status}`);
+                    }
+                    
                     const data = await response.json();
-                    items = data.records.map(record => ({
-                        id: record.id,
-                        name: record.fields['品名'] || '',
-                        count: record.fields['個数'] || 1,
-                        category: record.fields['属性'] || '備品',
-                        handling: record.fields['取扱い方法'] || '未決定',
-                        destination: record.fields['送り先'] || '',
-                        completed: record.fields['決定済み'] || false,
-                        addedBy: record.fields['登録者'] || '',
-                        addedAt: record.fields['登録日時'] || '',
-                        memo: record.fields['メモ'] || '',
-                        photoUrl: record.fields['写真'] ? record.fields['写真'][0]?.url : null
-                    }));
+                    
+                    // Google Apps Scriptからの配列データを処理
+                    if (Array.isArray(data)) {
+                        items = data.map((item, index) => ({
+                            id: item.id || item['ID'] || `item_${index}`,
+                            name: item.name || item['品名'] || '',
+                            count: parseInt(item.count || item['個数']) || 1,
+                            category: item.category || item['属性'] || '備品',
+                            handling: item.handling || item['取扱い方法'] || '未決定',
+                            destination: item.destination || item['送り先'] || '',
+                            completed: item.completed === true || item.completed === 'true' || item['決定済み'] === true || item['決定済み'] === 'true',
+                            addedBy: item.addedBy || item['登録者'] || '',
+                            addedAt: item.addedAt || item['登録日時'] || '',
+                            memo: item.memo || item['メモ'] || '',
+                            photoUrl: item.photoUrl || item['写真URL'] || null
+                        }));
+                    } else {
+                        items = [];
+                    }
 
                     displayItems();
                     updateSummary();
                     updateConnectionStatus('connected');
-                    console.log('APIからデータを読み込みました:', items.length, '件');
+                    console.log('Google Apps Scriptからデータを読み込みました:', items.length, '件');
                 } catch (error) {
                     console.error('データ読み込みエラー:', error);
                     updateConnectionStatus('disconnected');
-                    alert('データ読み込み中にエラーが発生しました。');
+                    alert('データ読み込み中にエラーが発生しました: ' + error.message);
                 }
             }
             
-            // Airtableに品目追加
+            // Google Apps Scriptに品目追加
             async function addItemToAPI(item) {
                 showLoading('品目を追加しています...');
                 try {
-                    const response = await fetch('/api/items', {
+                    if (!gasUrl) {
+                        throw new Error('Google Apps Script URLが設定されていません');
+                    }
+
+                    const formData = new FormData();
+                    formData.append('action', 'addItem');
+                    formData.append('name', item.name);
+                    formData.append('count', item.count);
+                    formData.append('category', item.category);
+                    formData.append('handling', item.handling);
+                    formData.append('destination', item.destination);
+                    formData.append('addedBy', item.addedBy);
+                    formData.append('memo', item.memo);
+                    formData.append('photoDataUrl', item.photoDataUrl || '');
+
+                    const response = await fetch(gasUrl, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(item)
+                        mode: 'cors',
+                        body: formData
                     });
 
                     if (!response.ok) {
                         throw new Error(`追加エラー: ${response.status}`);
                     }
                     
-                    const newItem = await response.json();
-                    await loadItemsFromAPI();
-                    hideLoading();
-                    alert('✅ 品目が追加されました！');
+                    const result = await response.json();
+                    if (result.success) {
+                        await loadItemsFromAPI();
+                        hideLoading();
+                        alert('✅ 品目が追加されました！');
+                    } else {
+                        throw new Error(result.error || '不明なエラー');
+                    }
                     
                 } catch (error) {
                     console.error('API追加エラー:', error);
@@ -650,30 +649,74 @@
                 }
             }
             
-            // Airtableの品目更新
-            async function updateItemInAPI(recordId, updates) {
+            // Google Apps Scriptで品目更新
+            async function updateItemInAPI(itemId, updates) {
                 showLoading('品目を更新しています...');
                 try {
-                    const response = await fetch(`/api/items?id=${recordId}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(updates)
+                    if (!gasUrl) {
+                        throw new Error('Google Apps Script URLが設定されていません');
+                    }
+
+                    const formData = new FormData();
+                    formData.append('action', 'updateItem');
+                    formData.append('id', itemId);
+                    Object.keys(updates).forEach(key => {
+                        formData.append(key, updates[key]);
+                    });
+
+                    const response = await fetch(gasUrl, {
+                        method: 'POST',
+                        mode: 'cors',
+                        body: formData
                     });
                     
                     if (!response.ok) {
                         throw new Error(`更新エラー: ${response.status}`);
                     }
 
-                    await loadItemsFromAPI();
-                    hideLoading();
-                    return true;
+                    const result = await response.json();
+                    if (result.success) {
+                        await loadItemsFromAPI();
+                        hideLoading();
+                        return true;
+                    } else {
+                        throw new Error(result.error || '更新に失敗しました');
+                    }
                 } catch (error) {
                     console.error('API更新エラー:', error);
                     hideLoading();
                     alert('❌ 品目更新中にエラーが発生しました: ' + error.message);
                     return false;
+                }
+            }
+
+            // 接続テスト
+            async function testConnection() {
+                const url = document.getElementById('gasUrl').value.trim();
+                if (!url) {
+                    alert('Google Apps Script URLを入力してください');
+                    return;
+                }
+
+                showLoading('接続テスト中...');
+                try {
+                    const response = await fetch(url + '?action=test', {
+                        method: 'GET',
+                        mode: 'cors'
+                    });
+                    
+                    if (response.ok) {
+                        gasUrl = url;
+                        localStorage.setItem('gasUrl', url);
+                        hideLoading();
+                        alert('✅ 接続テスト成功！Google Apps Scriptに接続できました。');
+                        loadItemsFromAPI();
+                    } else {
+                        throw new Error(`接続エラー: ${response.status}`);
+                    }
+                } catch (error) {
+                    hideLoading();
+                    alert('❌ 接続テストに失敗しました: ' + error.message);
                 }
             }
 
@@ -802,6 +845,9 @@
                         const photo = document.createElement('img');
                         photo.src = item.photoUrl;
                         photo.className = 'item-photo';
+                        photo.onerror = function() {
+                            this.style.display = 'none';
+                        };
                         itemHeader.appendChild(photo);
                     }
                     
@@ -870,181 +916,228 @@
                 document.getElementById('photoPreview').classList.add('hidden');
             }
 
-            // 品目追加ボタンのハンドラ
-            document.getElementById('addItemBtn').addEventListener('click', async () => {
-                if (!currentUser) {
-                    alert('まず、入力者名を設定してください。');
-                    return;
-                }
-
-                const itemName = document.getElementById('itemName').value.trim();
-                const itemCount = parseInt(document.getElementById('itemCount').value);
-                const itemMemo = document.getElementById('itemMemo').value.trim();
-
-                if (!itemName) {
-                    alert('品名を入力してください。');
-                    return;
-                }
-                
-                const destinationInput = document.getElementById('destination');
-                const finalDestination = selectedHandling === 'その他' ? destinationInput.value : document.querySelector('.category-btn.active[data-target="destination"]')?.dataset.value || '';
-                
-                let photoDataUrl = null;
-                const photoInput = document.getElementById('photoInput');
-                if (photoInput.files.length > 0) {
-                    try {
-                        photoDataUrl = await processImageForMobile(photoInput.files[0]);
-                    } catch (error) {
-                        alert(error.message);
-                        return;
-                    }
-                }
-
-                const newItem = {
-                    name: itemName,
-                    count: itemCount,
-                    category: selectedCategory,
-                    handling: selectedHandling,
-                    destination: finalDestination,
-                    addedBy: currentUser,
-                    addedAt: new Date().toISOString(),
-                    memo: itemMemo,
-                    photoDataUrl: photoDataUrl
-                };
-                
-                await addItemToAPI(newItem);
-                
-                // フォームをリセット
-                document.getElementById('itemName').value = '';
-                document.getElementById('itemCount').value = '1';
-                document.getElementById('itemMemo').value = '';
-                resetCategoryButtons();
-            });
-
-            // 決定済みボタンのハンドラ
-            document.getElementById('itemsList').addEventListener('click', async (e) => {
-                if (e.target.classList.contains('btn-toggle-completed')) {
-                    const itemCard = e.target.closest('.item-card');
-                    const recordId = itemCard.dataset.id;
-                    const item = items.find(i => i.id === recordId);
-
-                    if (item) {
-                        const updates = { '決定済み': !item.completed };
-                        await updateItemInAPI(recordId, updates);
-                    }
-                }
-            });
-
-            // Refreshボタンのハンドラ
-            document.getElementById('refreshBtn').addEventListener('click', () => {
-                loadItemsFromAPI();
-            });
-
-            // Airtableで確認ボタンのハンドラ
-            document.getElementById('openAirtableBtn').addEventListener('click', () => {
-                showError('この機能はまだ実装されていません。サーバーサイドからBase IDを取得する必要があります。');
-            });
-            
-            // CSVエクスポートボタンのハンドラ
-            document.getElementById('exportBtn').addEventListener('click', () => {
+            // CSVエクスポート機能
+            function exportToCSV() {
                 if (items.length === 0) {
                     alert('エクスポートするデータがありません。');
                     return;
                 }
-                
+
                 const headers = ['品名', '個数', '属性', '取扱い方法', '送り先', '決定済み', '登録者', '登録日時', 'メモ'];
-                const rows = items.map(item => [
-                    item.name,
-                    item.count,
-                    item.category,
-                    item.handling,
-                    item.destination,
-                    item.completed ? 'はい' : 'いいえ',
-                    item.addedBy,
-                    item.addedAt,
-                    item.memo
-                ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(','));
-                
-                const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", "備品リスト.csv");
-                document.body.appendChild(link);
+                const csvContent = [
+                    headers.join(','),
+                    ...items.map(item => [
+                        `"${item.name}"`,
+                        item.count,
+                        `"${item.category}"`,
+                        `"${item.handling}"`,
+                        `"${item.destination}"`,
+                        item.completed ? '済' : '未',
+                        `"${item.addedBy}"`,
+                        `"${item.addedAt}"`,
+                        `"${item.memo}"`
+                    ].join(','))
+                ].join('\n');
+
+                const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `品目管理_${new Date().toISOString().slice(0, 10)}.csv`;
                 link.click();
-                document.body.removeChild(link);
-            });
+            }
 
-            // カテゴリボタンのハンドラ
-            document.getElementById('categoryButtons').addEventListener('click', (e) => {
-                if (e.target.classList.contains('category-btn')) {
-                    const allButtons = e.target.parentNode.querySelectorAll('.category-btn');
-                    allButtons.forEach(btn => btn.classList.remove('active'));
-                    e.target.classList.add('active');
-                    selectedCategory = e.target.dataset.value;
+            // イベントリスナーの設定
+            document.addEventListener('DOMContentLoaded', function() {
+                // 保存されたURLを復元
+                const savedUrl = localStorage.getItem('gasUrl');
+                if (savedUrl) {
+                    document.getElementById('gasUrl').value = savedUrl;
+                    gasUrl = savedUrl;
+                    loadItemsFromAPI();
                 }
-            });
-            
-            // 取扱い方法ボタンのハンドラ
-            document.getElementById('handlingButtons').addEventListener('click', (e) => {
-                if (e.target.classList.contains('category-btn')) {
-                    const allButtons = e.target.parentNode.querySelectorAll('.category-btn');
-                    allButtons.forEach(btn => btn.classList.remove('active'));
-                    e.target.classList.add('active');
-                    selectedHandling = e.target.dataset.value;
-                    const destinationDiv = document.getElementById('destinationDiv');
-                    if (selectedHandling === '譲渡' || selectedHandling === '送り') {
-                        destinationDiv.classList.remove('hidden');
-                    } else {
-                        destinationDiv.classList.add('hidden');
-                        document.getElementById('destination').style.display = 'none';
-                    }
-                }
-            });
-            
-            // 送り先ボタンのハンドラ
-            document.getElementById('destinationButtons').addEventListener('click', (e) => {
-                if (e.target.classList.contains('category-btn')) {
-                    const allButtons = e.target.parentNode.querySelectorAll('.category-btn');
-                    allButtons.forEach(btn => btn.classList.remove('active'));
-                    e.target.classList.add('active');
-                    if (e.target.dataset.value === 'その他') {
-                        document.getElementById('destination').style.display = 'block';
-                    } else {
-                        document.getElementById('destination').style.display = 'none';
-                    }
-                }
-            });
 
-            // 写真入力のプレビュー
-            document.getElementById('photoInput').addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                const previewDiv = document.getElementById('photoPreview');
-                const previewImg = document.getElementById('previewImage');
-                const compressionInfo = document.getElementById('compressionInfo');
+                // 接続テストボタン
+                document.getElementById('testConnectionBtn').addEventListener('click', testConnection);
 
-                if (file) {
-                    processImageForMobile(file)
-                        .then(dataUrl => {
-                            previewImg.src = dataUrl;
-                            previewDiv.classList.remove('hidden');
-                            compressionInfo.textContent = `写真サイズを ${Math.round(dataUrl.length / 1024)} KB に圧縮しました。`;
-                        })
-                        .catch(error => {
-                            alert(error.message);
-                            e.target.value = null;
-                            previewDiv.classList.add('hidden');
+                // ユーザー設定
+                document.getElementById('setUserBtn').addEventListener('click', setUser);
+
+                // カテゴリ選択
+                document.getElementById('categoryButtons').addEventListener('click', function(e) {
+                    if (e.target.classList.contains('category-btn')) {
+                        document.querySelectorAll('#categoryButtons .category-btn').forEach(btn => {
+                            btn.classList.remove('active');
                         });
-                } else {
-                    previewDiv.classList.add('hidden');
-                }
+                        e.target.classList.add('active');
+                        selectedCategory = e.target.dataset.value;
+                    }
+                });
+
+                // 取扱い方法選択
+                document.getElementById('handlingButtons').addEventListener('click', function(e) {
+                    if (e.target.classList.contains('category-btn')) {
+                        document.querySelectorAll('#handlingButtons .category-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                        e.target.classList.add('active');
+                        selectedHandling = e.target.dataset.value;
+                        
+                        const destinationDiv = document.getElementById('destinationDiv');
+                        if (selectedHandling === '譲渡' || selectedHandling === '送り') {
+                            destinationDiv.classList.remove('hidden');
+                        } else {
+                            destinationDiv.classList.add('hidden');
+                        }
+                    }
+                });
+
+                // 送り先選択
+                document.getElementById('destinationButtons').addEventListener('click', function(e) {
+                    if (e.target.classList.contains('category-btn')) {
+                        document.querySelectorAll('#destinationButtons .category-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                        e.target.classList.add('active');
+                        
+                        const destinationInput = document.getElementById('destination');
+                        if (e.target.dataset.value === 'その他') {
+                            destinationInput.style.display = 'block';
+                            destinationInput.focus();
+                        } else {
+                            destinationInput.style.display = 'none';
+                            destinationInput.value = e.target.dataset.value;
+                        }
+                    }
+                });
+
+                // 写真プレビュー
+                document.getElementById('photoInput').addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const preview = document.getElementById('photoPreview');
+                            const previewImage = document.getElementById('previewImage');
+                            const compressionInfo = document.getElementById('compressionInfo');
+                            
+                            previewImage.src = event.target.result;
+                            compressionInfo.textContent = `ファイルサイズ: ${(file.size / 1024).toFixed(1)}KB`;
+                            preview.classList.remove('hidden');
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+
+                // 品目追加ボタン
+                document.getElementById('addItemBtn').addEventListener('click', async function() {
+                    if (!currentUser) {
+                        alert('まず、入力者名を設定してください。');
+                        return;
+                    }
+
+                    if (!gasUrl) {
+                        alert('Google Apps Script URLを設定してください。');
+                        return;
+                    }
+
+                    const itemName = document.getElementById('itemName').value.trim();
+                    const itemCount = parseInt(document.getElementById('itemCount').value);
+                    const itemMemo = document.getElementById('itemMemo').value.trim();
+
+                    if (!itemName) {
+                        alert('品名を入力してください。');
+                        return;
+                    }
+
+                    if (!selectedCategory) {
+                        alert('属性を選択してください。');
+                        return;
+                    }
+
+                    if (!selectedHandling) {
+                        alert('取扱い方法を選択してください。');
+                        return;
+                    }
+                    
+                    const destinationInput = document.getElementById('destination');
+                    const finalDestination = (selectedHandling === '譲渡' || selectedHandling === '送り') ? 
+                        (destinationInput.value || destinationInput.placeholder) : '';
+                    
+                    let photoDataUrl = null;
+                    const photoInput = document.getElementById('photoInput');
+                    if (photoInput.files.length > 0) {
+                        try {
+                            photoDataUrl = await processImageForMobile(photoInput.files[0]);
+                        } catch (error) {
+                            alert(error.message);
+                            return;
+                        }
+                    }
+
+                    const newItem = {
+                        name: itemName,
+                        count: itemCount,
+                        category: selectedCategory,
+                        handling: selectedHandling,
+                        destination: finalDestination,
+                        addedBy: currentUser,
+                        memo: itemMemo,
+                        photoDataUrl: photoDataUrl
+                    };
+
+                    await addItemToAPI(newItem);
+                    
+                    // フォームリセット
+                    document.getElementById('itemName').value = '';
+                    document.getElementById('itemCount').value = '1';
+                    document.getElementById('itemMemo').value = '';
+                    resetCategoryButtons();
+                });
+
+                // リフレッシュボタン
+                document.getElementById('refreshBtn').addEventListener('click', loadItemsFromAPI);
+
+                // Google Sheetsで確認ボタン
+                document.getElementById('openSheetsBtn').addEventListener('click', function() {
+                    if (gasUrl) {
+                        // URLからスプレッドシートIDを抽出してGoogle Sheetsを開く
+                        const match = gasUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+                        if (match) {
+                            window.open(`https://docs.google.com/spreadsheets/d/${match[1]}`, '_blank');
+                        } else {
+                            alert('Google SheetsのURLを取得できませんでした。Google Apps ScriptのスプレッドシートIDを確認してください。');
+                        }
+                    } else {
+                        alert('Google Apps Script URLが設定されていません。');
+                    }
+                });
+
+                // CSVエクスポートボタン
+                document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+
+                // アイテムリストのクリックイベント（決定済み切り替え）
+                document.addEventListener('click', async function(e) {
+                    if (e.target.classList.contains('btn-toggle-completed')) {
+                        const itemCard = e.target.closest('.item-card');
+                        const itemId = itemCard.dataset.id;
+                        const item = items.find(item => item.id === itemId);
+                        
+                        if (item && gasUrl) {
+                            const newCompletedStatus = !item.completed;
+                            const success = await updateItemInAPI(itemId, { 
+                                completed: newCompletedStatus 
+                            });
+                            
+                            if (success) {
+                                item.completed = newCompletedStatus;
+                                displayItems();
+                                updateSummary();
+                            }
+                        }
+                    }
+                });
             });
 
-            // ページ読み込み時に実行
-            document.getElementById('setUserBtn').addEventListener('click', setUser);
-            
-            // 初回データ読み込み
-            loadItemsFromAPI();
         })();
     </script>
 </body>
