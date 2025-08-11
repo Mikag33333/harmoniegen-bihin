@@ -342,6 +342,13 @@
             100% { transform: rotate(360deg); }
         }
 
+        .toggle-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
         @media (max-width: 768px) {
             body {
                 padding: 5px;
@@ -466,6 +473,7 @@
                         <button class="category-btn" data-value="送り">送り</button>
                         <button class="category-btn" data-value="保留">保留</button>
                     </div>
+                    <p class="toggle-hint">💡 同じボタンをもう一度押すと選択解除されます</p>
                     <div id="destinationDiv" class="form-group hidden">
                         <label>譲渡先/送り先</label>
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;" id="destinationButtons">
@@ -475,6 +483,7 @@
                             <button type="button" class="category-btn" data-value="その他">その他</button>
                         </div>
                         <input type="text" id="destination" placeholder="その他の場合は直接入力" style="display: none;">
+                        <p class="toggle-hint">💡 同じボタンをもう一度押すと選択解除されます</p>
                     </div>
                 </div>
                 
@@ -731,11 +740,16 @@
                 }
             }
 
-            // 処分方法決定モーダルを表示
+            // 処分方法決定モーダルを表示（選択解除機能付き）
             function showHandlingModal(item) {
                 const modalHtml = `
-                    <div class="modal-overlay" id="handlingModal">
-                        <div class="modal-content">
+                    <div class="modal-overlay" id="handlingModal" style="
+                        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                        background: rgba(0,0,0,0.8); display: flex; align-items: center;
+                        justify-content: center; z-index: 9999;">
+                        <div class="modal-content" style="
+                            background: white; padding: 25px; border-radius: 12px;
+                            max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
                             <h3>📋 処分方法を決定</h3>
                             <p><strong>品目:</strong> ${item.name}</p>
                             <p><strong>現在の状況:</strong> ${item.handling}${item.destination ? ' (' + item.destination + ')' : ''}</p>
@@ -748,6 +762,7 @@
                                     <button class="category-btn" data-value="送り">送り</button>
                                     <button class="category-btn" data-value="保留">保留</button>
                                 </div>
+                                <p class="toggle-hint">💡 同じボタンをもう一度押すと選択解除されます</p>
                             </div>
                             
                             <div id="modalDestinationDiv" class="form-group hidden">
@@ -759,6 +774,7 @@
                                     <button type="button" class="category-btn" data-value="その他">その他</button>
                                 </div>
                                 <input type="text" id="modalDestination" placeholder="その他の場合は直接入力" style="display: none;">
+                                <p class="toggle-hint">💡 同じボタンをもう一度押すと選択解除されます</p>
                             </div>
                             
                             <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -774,41 +790,89 @@
                 let selectedHandling = '';
                 let selectedDestination = '';
                 
-                // 取扱い方法選択
+                // モーダル内の取扱い方法選択（選択解除機能付き）
                 document.getElementById('modalHandlingButtons').addEventListener('click', function(e) {
                     if (e.target.classList.contains('category-btn')) {
-                        document.querySelectorAll('#modalHandlingButtons .category-btn').forEach(btn => {
-                            btn.classList.remove('active');
-                        });
-                        e.target.classList.add('active');
-                        selectedHandling = e.target.dataset.value;
+                        const clickedValue = e.target.dataset.value;
                         
-                        const destinationDiv = document.getElementById('modalDestinationDiv');
-                        if (selectedHandling === '譲渡' || selectedHandling === '送り') {
-                            destinationDiv.classList.remove('hidden');
-                        } else {
+                        // 同じボタンが押された場合は選択解除
+                        if (selectedHandling === clickedValue) {
+                            // 選択解除
+                            e.target.classList.remove('active');
+                            selectedHandling = '';
+                            
+                            // 送り先選択エリアを隠す
+                            const destinationDiv = document.getElementById('modalDestinationDiv');
                             destinationDiv.classList.add('hidden');
                             selectedDestination = '';
+                            
+                            // 送り先ボタンの選択も解除
+                            document.querySelectorAll('#modalDestinationButtons .category-btn').forEach(btn => {
+                                btn.classList.remove('active');
+                            });
+                            document.getElementById('modalDestination').style.display = 'none';
+                            
+                        } else {
+                            // 他のボタンの選択状態をクリア
+                            document.querySelectorAll('#modalHandlingButtons .category-btn').forEach(btn => {
+                                btn.classList.remove('active');
+                            });
+                            
+                            // 新しいボタンを選択状態に
+                            e.target.classList.add('active');
+                            selectedHandling = clickedValue;
+                            
+                            const destinationDiv = document.getElementById('modalDestinationDiv');
+                            if (selectedHandling === '譲渡' || selectedHandling === '送り') {
+                                destinationDiv.classList.remove('hidden');
+                            } else {
+                                destinationDiv.classList.add('hidden');
+                                selectedDestination = '';
+                                // 送り先ボタンの選択も解除
+                                document.querySelectorAll('#modalDestinationButtons .category-btn').forEach(btn => {
+                                    btn.classList.remove('active');
+                                });
+                            }
                         }
                     }
                 });
                 
-                // 送り先選択
+                // モーダル内の送り先選択（選択解除機能付き）
                 document.getElementById('modalDestinationButtons').addEventListener('click', function(e) {
                     if (e.target.classList.contains('category-btn')) {
-                        document.querySelectorAll('#modalDestinationButtons .category-btn').forEach(btn => {
-                            btn.classList.remove('active');
-                        });
-                        e.target.classList.add('active');
-                        
+                        const clickedValue = e.target.dataset.value;
                         const destinationInput = document.getElementById('modalDestination');
-                        if (e.target.dataset.value === 'その他') {
-                            destinationInput.style.display = 'block';
-                            destinationInput.focus();
-                        } else {
+                        
+                        // 現在選択されているボタンを確認
+                        const currentlySelected = document.querySelector('#modalDestinationButtons .category-btn.active');
+                        const currentValue = currentlySelected ? currentlySelected.dataset.value : null;
+                        
+                        // 同じボタンが押された場合は選択解除
+                        if (currentValue === clickedValue) {
+                            // 選択解除
+                            e.target.classList.remove('active');
                             destinationInput.style.display = 'none';
-                            destinationInput.value = e.target.dataset.value;
-                            selectedDestination = e.target.dataset.value;
+                            destinationInput.value = '';
+                            selectedDestination = '';
+                        } else {
+                            // 他のボタンの選択状態をクリア
+                            document.querySelectorAll('#modalDestinationButtons .category-btn').forEach(btn => {
+                                btn.classList.remove('active');
+                            });
+                            
+                            // 新しいボタンを選択状態に
+                            e.target.classList.add('active');
+                            
+                            if (clickedValue === 'その他') {
+                                destinationInput.style.display = 'block';
+                                destinationInput.value = '';
+                                destinationInput.focus();
+                                selectedDestination = '';
+                            } else {
+                                destinationInput.style.display = 'none';
+                                destinationInput.value = clickedValue;
+                                selectedDestination = clickedValue;
+                            }
                         }
                     }
                 });
@@ -820,16 +884,13 @@
                 
                 // 保存ボタン
                 document.getElementById('saveHandlingBtn').addEventListener('click', async function() {
-                    if (!selectedHandling) {
-                        alert('取扱い方法を選択してください。');
-                        return;
-                    }
-                    
+                    // 選択解除の場合は「未決定」として保存
+                    const finalHandling = selectedHandling || '未決定';
                     const finalDestination = (selectedHandling === '譲渡' || selectedHandling === '送り') ? 
                         selectedDestination : '';
                     
                     const success = await updateItemHandlingInAPI(item.id, {
-                        handling: selectedHandling,
+                        handling: finalHandling,
                         destination: finalDestination
                     });
                     
@@ -851,6 +912,7 @@
                     }
                 });
             }
+
             async function deleteItemFromAPI(itemId) {
                 showLoading('品目を削除しています...');
                 try {
@@ -1183,39 +1245,85 @@
                     }
                 });
 
-                // 取扱い方法選択
+                // 取扱い方法選択（選択解除機能付き）
                 document.getElementById('handlingButtons').addEventListener('click', function(e) {
                     if (e.target.classList.contains('category-btn')) {
-                        document.querySelectorAll('#handlingButtons .category-btn').forEach(btn => {
-                            btn.classList.remove('active');
-                        });
-                        e.target.classList.add('active');
-                        selectedHandling = e.target.dataset.value;
+                        const clickedValue = e.target.dataset.value;
                         
-                        const destinationDiv = document.getElementById('destinationDiv');
-                        if (selectedHandling === '譲渡' || selectedHandling === '送り') {
-                            destinationDiv.classList.remove('hidden');
+                        // 同じボタンが押された場合は選択解除
+                        if (selectedHandling === clickedValue) {
+                            // 選択解除
+                            e.target.classList.remove('active');
+                            selectedHandling = '';
+                            
+                            // 送り先選択エリアを隠す
+                            document.getElementById('destinationDiv').classList.add('hidden');
+                            document.getElementById('destination').value = '';
+                            
+                            // 送り先ボタンの選択も解除
+                            document.querySelectorAll('#destinationButtons .category-btn').forEach(btn => {
+                                btn.classList.remove('active');
+                            });
+                            
                         } else {
-                            destinationDiv.classList.add('hidden');
+                            // 他のボタンの選択状態をクリア
+                            document.querySelectorAll('#handlingButtons .category-btn').forEach(btn => {
+                                btn.classList.remove('active');
+                            });
+                            
+                            // 新しいボタンを選択状態に
+                            e.target.classList.add('active');
+                            selectedHandling = clickedValue;
+                            
+                            // 送り先が必要な場合は表示
+                            const destinationDiv = document.getElementById('destinationDiv');
+                            if (selectedHandling === '譲渡' || selectedHandling === '送り') {
+                                destinationDiv.classList.remove('hidden');
+                            } else {
+                                destinationDiv.classList.add('hidden');
+                                document.getElementById('destination').value = '';
+                                // 送り先ボタンの選択も解除
+                                document.querySelectorAll('#destinationButtons .category-btn').forEach(btn => {
+                                    btn.classList.remove('active');
+                                });
+                            }
                         }
                     }
                 });
 
-                // 送り先選択
+                // 送り先選択（選択解除機能付き）
                 document.getElementById('destinationButtons').addEventListener('click', function(e) {
                     if (e.target.classList.contains('category-btn')) {
-                        document.querySelectorAll('#destinationButtons .category-btn').forEach(btn => {
-                            btn.classList.remove('active');
-                        });
-                        e.target.classList.add('active');
-                        
+                        const clickedValue = e.target.dataset.value;
                         const destinationInput = document.getElementById('destination');
-                        if (e.target.dataset.value === 'その他') {
-                            destinationInput.style.display = 'block';
-                            destinationInput.focus();
-                        } else {
+                        
+                        // 現在選択されているボタンを確認
+                        const currentlySelected = document.querySelector('#destinationButtons .category-btn.active');
+                        const currentValue = currentlySelected ? currentlySelected.dataset.value : null;
+                        
+                        // 同じボタンが押された場合は選択解除
+                        if (currentValue === clickedValue) {
+                            // 選択解除
+                            e.target.classList.remove('active');
                             destinationInput.style.display = 'none';
-                            destinationInput.value = e.target.dataset.value;
+                            destinationInput.value = '';
+                        } else {
+                            // 他のボタンの選択状態をクリア
+                            document.querySelectorAll('#destinationButtons .category-btn').forEach(btn => {
+                                btn.classList.remove('active');
+                            });
+                            
+                            // 新しいボタンを選択状態に
+                            e.target.classList.add('active');
+                            
+                            if (clickedValue === 'その他') {
+                                destinationInput.style.display = 'block';
+                                destinationInput.value = '';
+                                destinationInput.focus();
+                            } else {
+                                destinationInput.style.display = 'none';
+                                destinationInput.value = clickedValue;
+                            }
                         }
                     }
                 });
