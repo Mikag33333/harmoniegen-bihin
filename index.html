@@ -342,6 +342,12 @@
             100% { transform: rotate(360deg); }
         }
 
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
         .toggle-hint {
             font-size: 12px;
             color: #666;
@@ -1061,16 +1067,17 @@
                 }
             }
             
-            // 高圧縮画像処理（サイズ大幅削減）
+            // 高圧縮画像処理（撮影後に自動圧縮）
             function processImageForMobile(file) {
                 return new Promise((resolve, reject) => {
                     try {
-                        const maxFileSize = 2 * 1024 * 1024; // 2MBに制限
-                        const maxResolution = 512; // 512pxに縮小（より小さく）
+                        // ファイルサイズ制限を緩和（撮影直後なので大きなファイルも受け入れ）
+                        const maxFileSize = 50 * 1024 * 1024; // 50MBまで受け入れ
+                        const maxResolution = 512; // 最終的には512pxに縮小
                         const reader = new FileReader();
 
                         if (file.size > maxFileSize) {
-                            reject(new Error('ファイルサイズが大きすぎます（2MB以下にしてください）'));
+                            reject(new Error('ファイルサイズが大きすぎます（50MB以下）。別の画像を選択してください。'));
                             return;
                         }
 
@@ -1079,14 +1086,18 @@
                             return;
                         }
 
+                        console.log(`元画像処理開始: ${Math.round(file.size/1024/1024)}MB`);
+
                         reader.onload = function(event) {
                             const img = new Image();
                             img.onload = function() {
+                                console.log(`元画像サイズ: ${img.width}x${img.height}px`);
+                                
                                 let width = img.width;
                                 let height = img.height;
                                 let ratio = width / height;
 
-                                // より積極的にサイズを縮小
+                                // 大幅なサイズ削減（最大512px）
                                 if (width > maxResolution || height > maxResolution) {
                                     if (width > height) {
                                         width = maxResolution;
@@ -1102,30 +1113,45 @@
                                 canvas.height = height;
                                 const ctx = canvas.getContext('2d');
                                 
-                                // 画質を向上させるための設定
+                                // 高品質設定でリサイズ
                                 ctx.imageSmoothingEnabled = true;
                                 ctx.imageSmoothingQuality = 'high';
                                 ctx.drawImage(img, 0, 0, width, height);
 
-                                // 大幅に圧縮（品質を40%に下げる）
-                                let quality = 0.4;
+                                // 段階的圧縮（最初は低品質から開始）
+                                let quality = 0.3; // 30%品質から開始
                                 let compressedDataURL = canvas.toDataURL('image/jpeg', quality);
                                 
-                                // 最大データサイズを150KBに制限
-                                const maxDataSize = 150 * 1024; // 150KB
+                                // 目標データサイズ: 100KB以下
+                                const maxDataSize = 100 * 1024; // 100KB
                                 let attempts = 0;
                                 
-                                while (compressedDataURL.length > maxDataSize && quality > 0.1 && attempts < 5) {
-                                    quality -= 0.1;
+                                // 100KB以下になるまで品質を下げる
+                                while (compressedDataURL.length > maxDataSize && quality > 0.1 && attempts < 8) {
+                                    quality -= 0.05;
                                     compressedDataURL = canvas.toDataURL('image/jpeg', quality);
                                     attempts++;
                                 }
 
-                                console.log(`画像圧縮完了: ${width}x${height}px, 品質${Math.round(quality*100)}%, サイズ: ${Math.round(compressedDataURL.length/1024)}KB`);
+                                const finalSizeKB = Math.round(compressedDataURL.length / 1024);
+                                const originalSizeMB = Math.round(file.size / 1024 / 1024 * 10) / 10;
+                                const compressionRatio = Math.round((1 - (finalSizeKB / 1024) / originalSizeMB) * 100);
+
+                                console.log(`圧縮完了: ${width}x${height}px, 品質${Math.round(quality*100)}%, ${originalSizeMB}MB→${finalSizeKB}KB (${compressionRatio}%削減)`);
                                 resolve(compressedDataURL);
                             };
+                            
+                            img.onerror = function() {
+                                reject(new Error('画像の読み込みに失敗しました'));
+                            };
+                            
                             img.src = event.target.result;
                         };
+                        
+                        reader.onerror = function() {
+                            reject(new Error('ファイルの読み込みに失敗しました'));
+                        };
+                        
                         reader.readAsDataURL(file);
                     } catch (e) {
                         reject(e);
@@ -1378,7 +1404,7 @@
                     }
                 });
 
-                // 写真プレビュー（圧縮情報表示強化）
+                // 写真プレビュー（大きなファイルにも対応）
                 document.getElementById('photoInput').addEventListener('change', async function(e) {
                     const file = e.target.files[0];
                     if (file) {
@@ -1387,13 +1413,38 @@
                         const compressionInfo = document.getElementById('compressionInfo');
                         
                         // 元のファイル情報を表示
+                        const originalSizeMB = Math.round(file.size / 1024 / 1024 * 10) / 10;
                         const originalSizeKB = Math.round(file.size / 1024);
-                        compressionInfo.innerHTML = `<span style="color: #666;">処理中... 元ファイル: ${originalSizeKB}KB</span>`;
+                        
+                        let displaySize, unit;
+                        if (originalSizeMB >= 1) {
+                            displaySize = originalSizeMB;
+                            unit = 'MB';
+                        } else {
+                            displaySize = originalSizeKB;
+                            unit = 'KB';
+                        }
+                        
+                        compressionInfo.innerHTML = `
+                            <div style="color: #ffc107; font-weight: bold;">
+                                🔄 画像を圧縮中...
+                            </div>
+                            <small>元ファイル: ${displaySize}${unit} → 目標: 100KB以下</small>
+                            <div style="margin-top: 5px;">
+                                <div style="width: 100%; background: #e0e0e0; border-radius: 3px; height: 4px;">
+                                    <div style="width: 30%; background: #ffc107; border-radius: 3px; height: 4px; animation: pulse 1s infinite;"></div>
+                                </div>
+                            </div>
+                        `;
                         preview.classList.remove('hidden');
                         
                         try {
-                            // 画像を圧縮処理
+                            // 画像を圧縮処理（時間がかかる場合があるため非同期）
+                            const startTime = Date.now();
                             const compressedDataURL = await processImageForMobile(file);
+                            const endTime = Date.now();
+                            const processingTime = Math.round((endTime - startTime) / 1000 * 10) / 10;
+                            
                             previewImage.src = compressedDataURL;
                             
                             // 圧縮後のサイズを計算
@@ -1401,11 +1452,32 @@
                             const compressionRatio = Math.round((1 - compressedSizeKB / originalSizeKB) * 100);
                             
                             compressionInfo.innerHTML = `
-                                <span style="color: #28a745; font-weight: bold;">✅ 圧縮完了</span><br>
-                                <small>元ファイル: ${originalSizeKB}KB → 圧縮後: ${compressedSizeKB}KB (${compressionRatio}% 削減)</small>
+                                <div style="color: #28a745; font-weight: bold;">
+                                    ✅ 圧縮完了（${processingTime}秒）
+                                </div>
+                                <small>
+                                    ${displaySize}${unit} → <strong>${compressedSizeKB}KB</strong> 
+                                    <span style="color: #28a745;">(${compressionRatio}% 削減)</span>
+                                </small>
+                                <br>
+                                <small style="color: #666;">
+                                    📡 アップロード準備完了
+                                </small>
                             `;
                         } catch (error) {
-                            compressionInfo.innerHTML = `<span style="color: #dc3545;">❌ 圧縮エラー: ${error.message}</span>`;
+                            console.error('画像圧縮エラー:', error);
+                            compressionInfo.innerHTML = `
+                                <div style="color: #dc3545; font-weight: bold;">
+                                    ❌ 圧縮エラー
+                                </div>
+                                <small>${error.message}</small>
+                                <br>
+                                <small style="color: #666;">
+                                    別の画像を選択するか、画像なしで登録してください
+                                </small>
+                            `;
+                            // エラーの場合はファイル選択をクリア
+                            e.target.value = '';
                         }
                     }
                 });
