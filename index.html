@@ -614,30 +614,44 @@
                 }
             }
             
-            // Google Apps Scriptに品目追加
+            // Google Apps Scriptに品目追加（最適化版）
             async function addItemToAPI(item) {
-                showLoading('品目を追加しています...');
+                const loadingOverlay = showLoading('品目を追加しています...');
                 try {
                     if (!gasUrl) {
                         throw new Error('Google Apps Script URLが設定されていません');
                     }
 
+                    // フォームデータを効率的に作成
                     const formData = new FormData();
-                    formData.append('action', 'addItem');
-                    formData.append('name', item.name);
-                    formData.append('count', item.count);
-                    formData.append('category', item.category);
-                    formData.append('handling', item.handling);
-                    formData.append('destination', item.destination);
-                    formData.append('addedBy', item.addedBy);
-                    formData.append('memo', item.memo);
-                    formData.append('photoDataUrl', item.photoDataUrl || '');
+                    const formFields = {
+                        action: 'addItem',
+                        name: item.name,
+                        count: item.count.toString(),
+                        category: item.category,
+                        handling: item.handling,
+                        destination: item.destination || '',
+                        addedBy: item.addedBy,
+                        memo: item.memo || '',
+                        photoDataUrl: item.photoDataUrl || ''
+                    };
 
+                    // 一括でフォームデータに追加
+                    Object.entries(formFields).forEach(([key, value]) => {
+                        formData.append(key, value);
+                    });
+
+                    console.log('送信データサイズ:', item.photoDataUrl ? `${Math.round(item.photoDataUrl.length/1024)}KB` : '0KB');
+
+                    const startTime = Date.now();
                     const response = await fetch(gasUrl, {
                         method: 'POST',
                         mode: 'cors',
                         body: formData
                     });
+                    const endTime = Date.now();
+                    
+                    console.log(`API呼び出し時間: ${endTime - startTime}ms`);
 
                     if (!response.ok) {
                         throw new Error(`追加エラー: ${response.status}`);
@@ -645,9 +659,26 @@
                     
                     const result = await response.json();
                     if (result.success) {
+                        // ローディング表示を更新
+                        loadingOverlay.innerHTML = '<div class="loading-spinner"></div><div>データを更新中...</div>';
+                        
                         await loadItemsFromAPI();
                         hideLoading();
-                        alert('✅ 品目が追加されました！');
+                        
+                        // 成功メッセージを表示
+                        const successMsg = document.createElement('div');
+                        successMsg.style.cssText = `
+                            position: fixed; top: 20px; right: 20px; z-index: 10000;
+                            background: #28a745; color: white; padding: 15px 20px;
+                            border-radius: 8px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                        `;
+                        successMsg.textContent = '✅ 品目が追加されました！';
+                        document.body.appendChild(successMsg);
+                        
+                        setTimeout(() => {
+                            successMsg.remove();
+                        }, 3000);
+                        
                     } else {
                         throw new Error(result.error || '不明なエラー');
                     }
@@ -1030,16 +1061,16 @@
                 }
             }
             
-            // 軽量画像処理（モバイル対応）
+            // 高圧縮画像処理（サイズ大幅削減）
             function processImageForMobile(file) {
                 return new Promise((resolve, reject) => {
                     try {
-                        const maxFileSize = 5 * 1024 * 1024; // 5MB
-                        const maxResolution = 1024; // 1024px
+                        const maxFileSize = 2 * 1024 * 1024; // 2MBに制限
+                        const maxResolution = 512; // 512pxに縮小（より小さく）
                         const reader = new FileReader();
 
                         if (file.size > maxFileSize) {
-                            reject(new Error('ファイルサイズが大きすぎます（5MB以下にしてください）'));
+                            reject(new Error('ファイルサイズが大きすぎます（2MB以下にしてください）'));
                             return;
                         }
 
@@ -1055,6 +1086,7 @@
                                 let height = img.height;
                                 let ratio = width / height;
 
+                                // より積極的にサイズを縮小
                                 if (width > maxResolution || height > maxResolution) {
                                     if (width > height) {
                                         width = maxResolution;
@@ -1069,10 +1101,28 @@
                                 canvas.width = width;
                                 canvas.height = height;
                                 const ctx = canvas.getContext('2d');
+                                
+                                // 画質を向上させるための設定
+                                ctx.imageSmoothingEnabled = true;
+                                ctx.imageSmoothingQuality = 'high';
                                 ctx.drawImage(img, 0, 0, width, height);
 
-                                const resizedDataURL = canvas.toDataURL('image/jpeg', 0.8); // 80%品質
-                                resolve(resizedDataURL);
+                                // 大幅に圧縮（品質を40%に下げる）
+                                let quality = 0.4;
+                                let compressedDataURL = canvas.toDataURL('image/jpeg', quality);
+                                
+                                // 最大データサイズを150KBに制限
+                                const maxDataSize = 150 * 1024; // 150KB
+                                let attempts = 0;
+                                
+                                while (compressedDataURL.length > maxDataSize && quality > 0.1 && attempts < 5) {
+                                    quality -= 0.1;
+                                    compressedDataURL = canvas.toDataURL('image/jpeg', quality);
+                                    attempts++;
+                                }
+
+                                console.log(`画像圧縮完了: ${width}x${height}px, 品質${Math.round(quality*100)}%, サイズ: ${Math.round(compressedDataURL.length/1024)}KB`);
+                                resolve(compressedDataURL);
                             };
                             img.src = event.target.result;
                         };
@@ -1328,21 +1378,35 @@
                     }
                 });
 
-                // 写真プレビュー
-                document.getElementById('photoInput').addEventListener('change', function(e) {
+                // 写真プレビュー（圧縮情報表示強化）
+                document.getElementById('photoInput').addEventListener('change', async function(e) {
                     const file = e.target.files[0];
                     if (file) {
-                        const reader = new FileReader();
-                        reader.onload = function(event) {
-                            const preview = document.getElementById('photoPreview');
-                            const previewImage = document.getElementById('previewImage');
-                            const compressionInfo = document.getElementById('compressionInfo');
+                        const preview = document.getElementById('photoPreview');
+                        const previewImage = document.getElementById('previewImage');
+                        const compressionInfo = document.getElementById('compressionInfo');
+                        
+                        // 元のファイル情報を表示
+                        const originalSizeKB = Math.round(file.size / 1024);
+                        compressionInfo.innerHTML = `<span style="color: #666;">処理中... 元ファイル: ${originalSizeKB}KB</span>`;
+                        preview.classList.remove('hidden');
+                        
+                        try {
+                            // 画像を圧縮処理
+                            const compressedDataURL = await processImageForMobile(file);
+                            previewImage.src = compressedDataURL;
                             
-                            previewImage.src = event.target.result;
-                            compressionInfo.textContent = `ファイルサイズ: ${(file.size / 1024).toFixed(1)}KB`;
-                            preview.classList.remove('hidden');
-                        };
-                        reader.readAsDataURL(file);
+                            // 圧縮後のサイズを計算
+                            const compressedSizeKB = Math.round(compressedDataURL.length / 1024);
+                            const compressionRatio = Math.round((1 - compressedSizeKB / originalSizeKB) * 100);
+                            
+                            compressionInfo.innerHTML = `
+                                <span style="color: #28a745; font-weight: bold;">✅ 圧縮完了</span><br>
+                                <small>元ファイル: ${originalSizeKB}KB → 圧縮後: ${compressedSizeKB}KB (${compressionRatio}% 削減)</small>
+                            `;
+                        } catch (error) {
+                            compressionInfo.innerHTML = `<span style="color: #dc3545;">❌ 圧縮エラー: ${error.message}</span>`;
+                        }
                     }
                 });
 
