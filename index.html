@@ -690,6 +690,44 @@
                 }
             }
 
+            // Google Apps Scriptで品目削除
+            async function deleteItemFromAPI(itemId) {
+                showLoading('品目を削除しています...');
+                try {
+                    if (!gasUrl) {
+                        throw new Error('Google Apps Script URLが設定されていません');
+                    }
+
+                    const formData = new FormData();
+                    formData.append('action', 'deleteItem');
+                    formData.append('id', itemId);
+
+                    const response = await fetch(gasUrl, {
+                        method: 'POST',
+                        mode: 'cors',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`削除エラー: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    if (result.success) {
+                        await loadItemsFromAPI();
+                        hideLoading();
+                        return true;
+                    } else {
+                        throw new Error(result.error || '削除に失敗しました');
+                    }
+                } catch (error) {
+                    console.error('API削除エラー:', error);
+                    hideLoading();
+                    alert('❌ 品目削除中にエラーが発生しました: ' + error.message);
+                    return false;
+                }
+            }
+
             // 接続テスト
             async function testConnection() {
                 const url = document.getElementById('gasUrl').value.trim();
@@ -878,6 +916,9 @@
                     controls.innerHTML = `
                         <button class="btn btn-info btn-toggle-completed">
                             ${item.completed ? '✅ 決定済み' : '☑️ 決定済みにする'}
+                        </button>
+                        <button class="btn btn-danger btn-delete-item">
+                            🗑️ 削除
                         </button>
                     `;
                     itemCard.appendChild(controls);
@@ -1099,23 +1140,15 @@
 
                 // Google Sheetsで確認ボタン
                 document.getElementById('openSheetsBtn').addEventListener('click', function() {
-                    if (gasUrl) {
-                        // URLからスプレッドシートIDを抽出してGoogle Sheetsを開く
-                        const match = gasUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-                        if (match) {
-                            window.open(`https://docs.google.com/spreadsheets/d/${match[1]}`, '_blank');
-                        } else {
-                            alert('Google SheetsのURLを取得できませんでした。Google Apps ScriptのスプレッドシートIDを確認してください。');
-                        }
-                    } else {
-                        alert('Google Apps Script URLが設定されていません。');
-                    }
+                    // 直接スプレッドシートのURLを開く
+                    const spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/1vB-ymJZ2OSccz-3S5peH75B1ccriXDMfqJLrLXdX3JQ/edit';
+                    window.open(spreadsheetUrl, '_blank');
                 });
 
                 // CSVエクスポートボタン
                 document.getElementById('exportBtn').addEventListener('click', exportToCSV);
 
-                // アイテムリストのクリックイベント（決定済み切り替え）
+                // アイテムリストのクリックイベント（決定済み切り替えと削除）
                 document.addEventListener('click', async function(e) {
                     if (e.target.classList.contains('btn-toggle-completed')) {
                         const itemCard = e.target.closest('.item-card');
@@ -1129,7 +1162,28 @@
                             });
                             
                             if (success) {
+                                // ローカルの状態も更新
                                 item.completed = newCompletedStatus;
+                                displayItems();
+                                updateSummary();
+                            }
+                        }
+                    }
+                    
+                    if (e.target.classList.contains('btn-delete-item')) {
+                        const itemCard = e.target.closest('.item-card');
+                        const itemId = itemCard.dataset.id;
+                        const item = items.find(item => item.id === itemId);
+                        
+                        if (item && gasUrl) {
+                            // 確認なしで即座に削除
+                            const success = await deleteItemFromAPI(itemId);
+                            if (success) {
+                                // ローカルからも削除
+                                const index = items.findIndex(item => item.id === itemId);
+                                if (index > -1) {
+                                    items.splice(index, 1);
+                                }
                                 displayItems();
                                 updateSummary();
                             }
